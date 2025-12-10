@@ -7,6 +7,10 @@ let dashboardData = {
     operation: null
 };
 
+// Constants for vehicle marker positioning
+const VEHICLE_OFFSET_DISTANCE = 0.002; // Approximately 200 meters in degrees
+const VEHICLE_OFFSET_ANGLE_STEP = 60; // Degrees between vehicles in circular pattern
+
 // Helper function to extract sequential number from assignment number
 function getSequentialNumber(assignmentNumber) {
     if (!assignmentNumber) return '';
@@ -170,10 +174,9 @@ function addVehicleMarker(vehicle, assignment, offsetIndex) {
     
     // Calculate offset to avoid overlapping with assignment marker
     // Use a circular pattern around the assignment location
-    const offsetDistance = 0.002; // Approximately 200 meters in degrees
-    const angle = (offsetIndex * 60) * (Math.PI / 180); // Distribute around circle
-    const latOffset = offsetDistance * Math.cos(angle);
-    const lngOffset = offsetDistance * Math.sin(angle);
+    const angle = (offsetIndex * VEHICLE_OFFSET_ANGLE_STEP) * (Math.PI / 180);
+    const latOffset = VEHICLE_OFFSET_DISTANCE * Math.cos(angle);
+    const lngOffset = VEHICLE_OFFSET_DISTANCE * Math.sin(angle);
     
     const offsetLat = assignment.latitude + latOffset;
     const offsetLng = assignment.longitude + lngOffset;
