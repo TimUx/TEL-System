@@ -50,6 +50,8 @@ Die Anwendung wurde speziell für Feuerwehren und andere Hilfsorganisationen ent
 - **Standortverwaltung**: Erfassung von Feuerwehrstandorten mit automatischer GPS-Koordinaten-Ermittlung
 - **Fahrzeugverwaltung**: Verwaltung von Einsatzfahrzeugen mit Rufname, Typ, Besatzung und Standortzuweisung
 - **Auftragsverwaltung**: Erstellen und Verwalten von Einsatzaufträgen mit Statusverfolgung (Offen, Zugewiesen, Abgeschlossen)
+  - Fortlaufende Auftragsnummern (001, 002, 003) für bessere Übersichtlichkeit in Listen und auf dem Dashboard
+  - Optimierte Darstellung mit vergrößerten Zahlen für Beamer-Ansichten
 - **Lagekarte**: OpenStreetMap-basierte Karte zur Visualisierung von Einsatzstellen und Fahrzeugen
 - **Dashboard**: Übersichtliche Beamer-optimierte Ansicht mit Aufträgen und Fahrzeugen
 - **Einsatztagebuch**: Chronologische Erfassung aller Ereignisse und Entscheidungen
@@ -74,8 +76,10 @@ Die Hauptseite bietet eine übersichtliche Darstellung der aktiven Einsatzlage m
 ![Hauptseite mit Auftragsverwaltung](screenshots/01-hauptseite-auftraege.png)
 
 **Funktionen:**
+- Kompakter "TEL"-Header für übersichtliche Navigation
 - Anzeige der aktuellen Einsatzlage mit Nummer, Titel und Beschreibung
-- Liste aller Aufträge mit Einsatznummer, Stichwort und Details
+- Liste aller Aufträge mit fortlaufender Nummer (z.B. 001, 002, 003) für bessere Übersicht
+- Zugewiesene Fahrzeuge werden bei jedem Auftrag angezeigt
 - Schnelle Aktionen: Auftrag abschließen, bearbeiten oder Fahrzeuge zuweisen
 - Neuen Auftrag erstellen über den "Neuer Auftrag" Button
 
@@ -88,6 +92,7 @@ Das Einsatztagebuch dokumentiert automatisch alle wichtigen Ereignisse während 
 **Funktionen:**
 - Automatische Protokollierung aller Statusänderungen
 - Chronologische Darstellung mit Zeitstempeln
+- Übersichtliche Anzeige der fortlaufenden Auftragsnummern (001, 002, 003, etc.)
 - Manuelle Einträge für wichtige Entscheidungen und Beobachtungen
 - Verknüpfung von Einträgen mit zugehörigen Aufträgen
 
@@ -99,7 +104,9 @@ Das Dashboard ist für die Anzeige auf einem Beamer optimiert und bietet eine ü
 
 **Funktionen:**
 - Übersicht über Anzahl der Aufträge, eingesetzten Fahrzeuge und Personal
-- Farbcodierte Darstellung der Auftragsstatus (Offen, Zugewiesen, Beendet)
+- Große, gut lesbare Auftragsnummern (001, 002, 003) für optimale Sichtbarkeit auf Großbildschirmen
+- Farbcodierte Darstellung der Auftragsstatus (Offen: Rot, Zugewiesen: Orange, Beendet: Grün)
+- Fahrzeuge mit mehreren Aufträgen werden übersichtlich mit allen Nummern angezeigt
 - Gruppierte Anzeige der Fahrzeuge nach Standorten
 - Automatische Aktualisierung ohne Seitenneuladen
 
