@@ -28,6 +28,9 @@ function updateOperationDisplay() {
     const operationInfo = document.getElementById('operationInfo');
     const operationDetails = document.getElementById('operationDetails');
     const closeBtn = document.getElementById('closeOperationBtn');
+    const newOperationBtn = document.getElementById('newOperationBtn');
+    const openMapBtn = document.getElementById('openMapBtn');
+    const openDashboardBtn = document.getElementById('openDashboardBtn');
     
     if (currentOperation) {
         operationInfo.style.display = 'block';
@@ -37,10 +40,16 @@ function updateOperationDisplay() {
             <p><strong>Erstellt:</strong> ${formatDate(currentOperation.created_at)}</p>
             ${currentOperation.description ? `<p><strong>Beschreibung:</strong> ${currentOperation.description}</p>` : ''}
         `;
-        closeBtn.disabled = false;
+        closeBtn.style.display = 'inline-block';
+        newOperationBtn.style.display = 'none';
+        openMapBtn.style.display = 'inline-block';
+        openDashboardBtn.style.display = 'inline-block';
     } else {
         operationInfo.style.display = 'none';
-        closeBtn.disabled = true;
+        closeBtn.style.display = 'none';
+        newOperationBtn.style.display = 'inline-block';
+        openMapBtn.style.display = 'none';
+        openDashboardBtn.style.display = 'none';
     }
 }
 
@@ -98,14 +107,39 @@ function setupEventListeners() {
     // Close Operation
     document.getElementById('closeOperationBtn').addEventListener('click', handleCloseOperation);
     
+    // Settings Dropdown Menu
+    const settingsMenuBtn = document.getElementById('settingsMenuBtn');
+    const settingsDropdown = document.getElementById('settingsDropdown');
+    
+    settingsMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        settingsDropdown.classList.toggle('active');
+    });
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!settingsMenuBtn.contains(e.target) && !settingsDropdown.contains(e.target)) {
+            settingsDropdown.classList.remove('active');
+        }
+    });
+    
     // Configuration Modals
-    document.getElementById('vehiclesConfigBtn').addEventListener('click', openVehiclesConfig);
-    document.getElementById('locationsConfigBtn').addEventListener('click', openLocationsConfig);
+    document.getElementById('vehiclesConfigBtn').addEventListener('click', () => {
+        settingsDropdown.classList.remove('active');
+        openVehiclesConfig();
+    });
+    document.getElementById('locationsConfigBtn').addEventListener('click', () => {
+        settingsDropdown.classList.remove('active');
+        openLocationsConfig();
+    });
+    document.getElementById('historyBtn').addEventListener('click', () => {
+        settingsDropdown.classList.remove('active');
+        window.open('history.html', 'history', 'width=1200,height=800');
+    });
     
     // Open Windows
     document.getElementById('openMapBtn').addEventListener('click', () => window.open('map.html', 'map', 'width=1200,height=800'));
     document.getElementById('openDashboardBtn').addEventListener('click', () => window.open('dashboard.html', 'dashboard', 'width=1600,height=900'));
-    document.getElementById('historyBtn').addEventListener('click', () => window.open('history.html', 'history', 'width=1200,height=800'));
     
     // Close modals
     document.querySelectorAll('.close').forEach(closeBtn => {

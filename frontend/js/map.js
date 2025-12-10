@@ -14,11 +14,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Initialize Leaflet map centered on Germany
     map = L.map('map').setView([51.1657, 10.4515], 6);
     
-    // Add OpenStreetMap tiles
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors',
-        maxZoom: 19
-    }).addTo(map);
+    // Use screenshot as fallback instead of live OpenStreetMap tiles (firewall issue)
+    // Define the bounds for the screenshot (approximate Germany bounds)
+    const imageBounds = [[47.27, 5.87], [55.06, 15.04]];
+    L.imageOverlay('../screenshots/Screenshot_Openstreetmap.png', imageBounds).addTo(map);
     
     // Start updating
     updateMap();
