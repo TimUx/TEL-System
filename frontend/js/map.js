@@ -2,6 +2,13 @@
 let map;
 let markers = {};
 
+// Helper function to extract sequential number from assignment number
+function getSequentialNumber(assignmentNumber) {
+    if (!assignmentNumber) return '';
+    const parts = assignmentNumber.split('-');
+    return parts.length > 0 ? parts[parts.length - 1] : assignmentNumber;
+}
+
 // Initialize map
 document.addEventListener('DOMContentLoaded', async () => {
     // Initialize Leaflet map centered on Germany
@@ -92,7 +99,7 @@ function addAssignmentMarker(assignment) {
     // Create custom icon
     const iconHtml = `
         <div class="assignment-marker ${assignment.status === 'completed' ? 'completed' : ''}">
-            ${assignment.number.split('-').pop()}
+            ${getSequentialNumber(assignment.number)}
         </div>
     `;
     
@@ -108,7 +115,7 @@ function addAssignmentMarker(assignment) {
     
     // Popup content
     const popupContent = `
-        <strong>${assignment.number}</strong><br>
+        <strong>${getSequentialNumber(assignment.number)}</strong><br>
         ${assignment.title}<br>
         ${assignment.location_address || ''}<br>
         Status: ${assignment.status}<br>
@@ -131,14 +138,14 @@ function addVehicleMarker(vehicle, assignment) {
         iconHtml = `
             <div class="vehicle-marker-tactical">
                 <img src="${symbolPath}" alt="${vehicle.vehicle_type}" class="tactical-symbol">
-                <div class="vehicle-marker-label">${vehicle.callsign}<br><small>${assignment.number}</small></div>
+                <div class="vehicle-marker-label">${vehicle.callsign}<br><small>${getSequentialNumber(assignment.number)}</small></div>
             </div>
         `;
     } else {
         iconHtml = `
             <div class="vehicle-marker">
                 ${vehicle.callsign}<br>
-                <small>${assignment.number}</small>
+                <small>${getSequentialNumber(assignment.number)}</small>
             </div>
         `;
     }
@@ -167,7 +174,7 @@ function addVehicleMarker(vehicle, assignment) {
         <strong>${vehicle.callsign}</strong><br>
         Typ: ${vehicle.vehicle_type || 'N/A'}<br>
         Besatzung: ${vehicle.crew_count}<br>
-        Auftrag: ${assignment.number} - ${assignment.title}
+        Auftrag: ${getSequentialNumber(assignment.number)} - ${assignment.title}
     `;
     
     marker.bindPopup(popupContent);

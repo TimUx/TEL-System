@@ -5,6 +5,13 @@ let dashboardData = {
     operation: null
 };
 
+// Helper function to extract sequential number from assignment number
+function getSequentialNumber(assignmentNumber) {
+    if (!assignmentNumber) return '';
+    const parts = assignmentNumber.split('-');
+    return parts.length > 0 ? parts[parts.length - 1] : assignmentNumber;
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     await updateDashboard();
     setInterval(updateDashboard, 3000); // Update every 3 seconds
@@ -91,7 +98,7 @@ function renderAssignmentGroup(containerId, assignments) {
         card.className = `assignment-card status-${assignment.status}`;
         
         card.innerHTML = `
-            <div class="assignment-number">${assignment.number}</div>
+            <div class="assignment-number">${getSequentialNumber(assignment.number)}</div>
             <div class="assignment-title">${assignment.title}</div>
             ${assignment.location_address ? 
                 `<div class="assignment-location">${assignment.location_address}</div>` : ''}
@@ -165,12 +172,12 @@ function renderActiveVehicles(vehicleData) {
             // Show active assignments first
             activeAssignments.forEach((a, index) => {
                 const isFirst = index === 0;
-                assignmentsHtml += `<span class="assignment-badge ${isFirst ? 'active' : 'queued'}">${a.number}</span>`;
+                assignmentsHtml += `<span class="assignment-badge ${isFirst ? 'active' : 'queued'}">${getSequentialNumber(a.number)}</span>`;
             });
             
             // Show completed assignments
             completedAssignments.forEach(a => {
-                assignmentsHtml += `<span class="assignment-badge completed">${a.number}</span>`;
+                assignmentsHtml += `<span class="assignment-badge completed">${getSequentialNumber(a.number)}</span>`;
             });
             
             assignmentsHtml += '</div>';
