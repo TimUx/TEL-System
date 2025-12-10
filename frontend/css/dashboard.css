@@ -1,0 +1,273 @@
+/* Dashboard Styles - Optimized for beamer/large screen */
+body {
+    margin: 0;
+    padding: 0;
+    background: #1a1a1a;
+    color: #fff;
+}
+
+.dashboard {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+/* Statistics Bar */
+.stats-bar {
+    background: #2c3e50;
+    padding: 20px;
+    display: flex;
+    justify-content: space-around;
+    border-bottom: 3px solid #3498db;
+}
+
+.stat-item {
+    text-align: center;
+}
+
+.stat-label {
+    font-size: 16px;
+    color: #bdc3c7;
+    margin-bottom: 5px;
+}
+
+.stat-value {
+    font-size: 36px;
+    font-weight: bold;
+    color: #3498db;
+}
+
+/* Dashboard Content */
+.dashboard-content {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.dashboard-column {
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.dashboard-column h2 {
+    font-size: 24px;
+    margin-bottom: 20px;
+    color: #3498db;
+    border-bottom: 2px solid #3498db;
+    padding-bottom: 10px;
+}
+
+/* Assignments Column (Left) */
+.assignments-column {
+    flex: 1;
+    background: #2c3e50;
+    border-right: 2px solid #34495e;
+}
+
+.assignment-group {
+    margin-bottom: 20px;
+}
+
+.status-header {
+    font-size: 18px;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+}
+
+.status-header.status-open {
+    background: #e74c3c;
+}
+
+.status-header.status-assigned {
+    background: #f39c12;
+}
+
+.status-header.status-completed {
+    background: #27ae60;
+}
+
+.assignment-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.assignment-card {
+    background: #34495e;
+    padding: 12px;
+    border-radius: 5px;
+    border-left: 5px solid #3498db;
+    min-height: 100px;
+}
+
+.assignment-card.status-open {
+    border-left-color: #e74c3c;
+}
+
+.assignment-card.status-assigned {
+    border-left-color: #f39c12;
+}
+
+.assignment-card.status-completed {
+    border-left-color: #27ae60;
+    opacity: 0.7;
+}
+
+.assignment-number {
+    font-size: 12px;
+    color: #95a5a6;
+    margin-bottom: 5px;
+}
+
+.assignment-title {
+    font-size: 16px;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.assignment-location {
+    font-size: 12px;
+    color: #bdc3c7;
+    margin-bottom: 5px;
+}
+
+.assignment-vehicles {
+    margin-top: 8px;
+    font-size: 12px;
+    color: #3498db;
+}
+
+/* Vehicles Column (Right) */
+.vehicles-column {
+    flex: 1;
+    background: #34495e;
+}
+
+.vehicle-group {
+    margin-bottom: 15px;
+}
+
+.vehicle-group h3 {
+    font-size: 14px;
+    padding: 6px 8px;
+    background: #2c3e50;
+    border-radius: 4px;
+    margin-bottom: 8px;
+}
+
+.vehicle-group.in-use h3 {
+    background: #27ae60;
+}
+
+/* Active Vehicles - Grid Layout */
+.vehicle-list-active {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+/* Inactive Vehicles - Ultra-Compact Grid Layout */
+.vehicle-list-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+    gap: 4px;
+}
+
+/* Active Vehicle Cards - Grid Style */
+.vehicle-card.active {
+    background: #27ae60;
+    border: 2px solid #2ecc71;
+    padding: 10px;
+    border-radius: 5px;
+    min-height: 110px;
+}
+
+.vehicle-info {
+    margin-bottom: 6px;
+}
+
+.vehicle-callsign {
+    font-size: 15px;
+    font-weight: bold;
+    line-height: 1.2;
+}
+
+.vehicle-type {
+    font-size: 12px;
+    color: #e8f5e9;
+    margin-top: 2px;
+}
+
+.vehicle-crew {
+    font-size: 11px;
+    color: #c8e6c9;
+    margin-top: 2px;
+}
+
+/* Assignment Badges for Active Vehicles */
+.vehicle-assignments {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 6px;
+}
+
+.assignment-badge {
+    display: inline-block;
+    padding: 3px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: bold;
+}
+
+.assignment-badge.active {
+    background: #fff;
+    color: #27ae60;
+    border: 2px solid #fff;
+}
+
+.assignment-badge.queued {
+    background: #81c784;
+    color: #1b5e20;
+    border: 2px solid #66bb6a;
+}
+
+.assignment-badge.completed {
+    background: #546e7a;
+    color: #b0bec5;
+    border: 2px solid #607d8b;
+    opacity: 0.6;
+}
+
+/* Inactive Vehicle Cards - Ultra-Compact */
+.vehicle-card.inactive {
+    background: #546e7a;
+    padding: 4px 6px;
+    border-radius: 3px;
+    border: 1px solid #607d8b;
+    opacity: 0.75;
+    min-height: 45px;
+    font-size: 10px;
+}
+
+.vehicle-callsign-small {
+    font-size: 11px;
+    font-weight: bold;
+    color: #b0bec5;
+    line-height: 1.2;
+}
+
+.vehicle-type-small {
+    font-size: 9px;
+    color: #90a4ae;
+    margin-top: 1px;
+}
+
+.vehicle-crew-small {
+    font-size: 9px;
+    color: #90a4ae;
+    margin-top: 1px;
+}

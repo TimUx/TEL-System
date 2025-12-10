@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - TEL-System</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Statistics Bar -->
+        <div class="stats-bar">
+            <div class="stat-item">
+                <div class="stat-label">Aufträge</div>
+                <div class="stat-value" id="statsAssignments">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Eingesetzte Fahrzeuge</div>
+                <div class="stat-value" id="statsVehicles">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Eingesetztes Personal</div>
+                <div class="stat-value" id="statsPersonnel">0</div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="dashboard-content">
+            <!-- Assignments Column -->
+            <div class="dashboard-column assignments-column">
+                <h2>Aufträge</h2>
+                
+                <div class="assignment-group">
+                    <h3 class="status-header status-open">Offen</h3>
+                    <div id="openAssignments" class="assignment-list"></div>
+                </div>
+                
+                <div class="assignment-group">
+                    <h3 class="status-header status-assigned">Zugewiesen</h3>
+                    <div id="assignedAssignments" class="assignment-list"></div>
+                </div>
+                
+                <div class="assignment-group">
+                    <h3 class="status-header status-completed">Beendet</h3>
+                    <div id="completedAssignments" class="assignment-list"></div>
+                </div>
+            </div>
+
+            <!-- Vehicles Column -->
+            <div class="dashboard-column vehicles-column">
+                <h2>Fahrzeuge</h2>
+                
+                <div class="vehicle-group in-use">
+                    <h3>Im Einsatz</h3>
+                    <div id="activeVehicles" class="vehicle-list"></div>
+                </div>
+                
+                <div id="vehiclesByLocation"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/tactical-symbols.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/dashboard.js"></script>
+</body>
+</html>
