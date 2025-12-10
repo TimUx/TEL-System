@@ -146,59 +146,63 @@ body {
 }
 
 .vehicle-group {
-    margin-bottom: 25px;
+    margin-bottom: 15px;
 }
 
 .vehicle-group h3 {
-    font-size: 16px;
-    padding: 8px;
+    font-size: 14px;
+    padding: 6px 8px;
     background: #2c3e50;
-    border-radius: 5px;
-    margin-bottom: 10px;
+    border-radius: 4px;
+    margin-bottom: 8px;
 }
 
 .vehicle-group.in-use h3 {
     background: #27ae60;
 }
 
-.vehicle-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.vehicle-list-grid {
+/* Active Vehicles - Grid Layout */
+.vehicle-list-active {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 8px;
-}
-
-/* Active Vehicle Cards (larger) */
-.vehicle-card.active {
-    background: #27ae60;
-    border: 2px solid #2ecc71;
-    padding: 12px;
-    border-radius: 5px;
     margin-bottom: 10px;
 }
 
+/* Inactive Vehicles - Ultra-Compact Grid Layout */
+.vehicle-list-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+    gap: 4px;
+}
+
+/* Active Vehicle Cards - Grid Style */
+.vehicle-card.active {
+    background: #27ae60;
+    border: 2px solid #2ecc71;
+    padding: 10px;
+    border-radius: 5px;
+    min-height: 110px;
+}
+
 .vehicle-info {
-    margin-bottom: 8px;
+    margin-bottom: 6px;
 }
 
 .vehicle-callsign {
-    font-size: 18px;
+    font-size: 15px;
     font-weight: bold;
+    line-height: 1.2;
 }
 
 .vehicle-type {
-    font-size: 14px;
+    font-size: 12px;
     color: #e8f5e9;
     margin-top: 2px;
 }
 
 .vehicle-crew {
-    font-size: 14px;
+    font-size: 11px;
     color: #c8e6c9;
     margin-top: 2px;
 }
@@ -207,15 +211,15 @@ body {
 .vehicle-assignments {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
-    margin-top: 8px;
+    gap: 4px;
+    margin-top: 6px;
 }
 
 .assignment-badge {
     display: inline-block;
-    padding: 4px 8px;
+    padding: 3px 6px;
     border-radius: 3px;
-    font-size: 12px;
+    font-size: 10px;
     font-weight: bold;
 }
 
@@ -238,30 +242,32 @@ body {
     opacity: 0.6;
 }
 
-/* Inactive Vehicle Cards (smaller, gray) */
+/* Inactive Vehicle Cards - Ultra-Compact */
 .vehicle-card.inactive {
     background: #546e7a;
-    padding: 8px;
-    border-radius: 4px;
+    padding: 4px 6px;
+    border-radius: 3px;
     border: 1px solid #607d8b;
-    opacity: 0.8;
-    min-height: 70px;
+    opacity: 0.75;
+    min-height: 45px;
+    font-size: 10px;
 }
 
 .vehicle-callsign-small {
-    font-size: 14px;
+    font-size: 11px;
     font-weight: bold;
     color: #b0bec5;
+    line-height: 1.2;
 }
 
 .vehicle-type-small {
-    font-size: 11px;
+    font-size: 9px;
     color: #90a4ae;
-    margin-top: 2px;
+    margin-top: 1px;
 }
 
 .vehicle-crew-small {
-    font-size: 11px;
+    font-size: 9px;
     color: #90a4ae;
-    margin-top: 2px;
+    margin-top: 1px;
 }

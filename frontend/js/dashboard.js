@@ -145,7 +145,10 @@ function renderActiveVehicles(vehicleData) {
         return;
     }
     
-    container.innerHTML = '';
+    // Create grid container for active vehicles
+    const gridContainer = document.createElement('div');
+    gridContainer.className = 'vehicle-list-active';
+    
     vehicleData.forEach(({ vehicle, assignments }) => {
         const card = document.createElement('div');
         card.className = 'vehicle-card active';
@@ -182,8 +185,11 @@ function renderActiveVehicles(vehicleData) {
             ${assignmentsHtml}
         `;
         
-        container.appendChild(card);
+        gridContainer.appendChild(card);
     });
+    
+    container.innerHTML = '';
+    container.appendChild(gridContainer);
 }
 
 function renderVehiclesByLocation(vehiclesByLocation) {

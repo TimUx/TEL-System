@@ -122,19 +122,32 @@ function addAssignmentMarker(assignment) {
 function addVehicleMarker(vehicle, assignment) {
     const markerKey = `vehicle_${vehicle.id}`;
     
-    // Create custom icon with vehicle callsign
-    const iconHtml = `
-        <div class="vehicle-marker">
-            ${vehicle.callsign}<br>
-            <small>${assignment.number}</small>
-        </div>
-    `;
+    // Get tactical symbol path
+    const symbolPath = getTacticalSymbolPath(vehicle.vehicle_type);
+    
+    // Create custom icon with tactical symbol or text fallback
+    let iconHtml;
+    if (symbolPath) {
+        iconHtml = `
+            <div class="vehicle-marker-tactical">
+                <img src="${symbolPath}" alt="${vehicle.vehicle_type}" class="tactical-symbol">
+                <div class="vehicle-marker-label">${vehicle.callsign}<br><small>${assignment.number}</small></div>
+            </div>
+        `;
+    } else {
+        iconHtml = `
+            <div class="vehicle-marker">
+                ${vehicle.callsign}<br>
+                <small>${assignment.number}</small>
+            </div>
+        `;
+    }
     
     const icon = L.divIcon({
         className: 'custom-marker',
         html: iconHtml,
-        iconSize: [80, 40],
-        iconAnchor: [40, 20]
+        iconSize: symbolPath ? [60, 80] : [80, 40],
+        iconAnchor: symbolPath ? [30, 70] : [40, 20]
     });
     
     const marker = L.marker([assignment.latitude, assignment.longitude], { 

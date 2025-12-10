@@ -91,6 +91,10 @@ function setupEventListeners() {
     // Close Operation
     document.getElementById('closeOperationBtn').addEventListener('click', handleCloseOperation);
     
+    // Configuration Modals
+    document.getElementById('vehiclesConfigBtn').addEventListener('click', openVehiclesConfig);
+    document.getElementById('locationsConfigBtn').addEventListener('click', openLocationsConfig);
+    
     // Open Windows
     document.getElementById('openMapBtn').addEventListener('click', () => window.open('map.html', 'map', 'width=1200,height=800'));
     document.getElementById('openDashboardBtn').addEventListener('click', () => window.open('dashboard.html', 'dashboard', 'width=1600,height=900'));
@@ -517,5 +521,74 @@ async function deleteLocation(id) {
     if (confirm('Standort wirklich löschen?')) {
         await api.deleteLocation(id);
         await loadData();
+    }
+}
+
+// Configuration Modal Functions
+async function openVehiclesConfig() {
+    document.getElementById('vehiclesConfigModal').classList.add('active');
+    await loadVehiclesConfig();
+}
+
+async function openLocationsConfig() {
+    document.getElementById('locationsConfigModal').classList.add('active');
+    await loadLocationsConfig();
+}
+
+async function loadVehiclesConfig() {
+    try {
+        const vehicles = await api.getVehicles();
+        const vehiclesList = document.querySelector('#vehiclesConfigModal #vehiclesList');
+        
+        if (vehicles.length === 0) {
+            vehiclesList.innerHTML = '<p class="no-data">Keine Fahrzeuge vorhanden</p>';
+            return;
+        }
+        
+        vehiclesList.innerHTML = vehicles.map(vehicle => `
+            <div class="list-item">
+                <div class="item-info">
+                    <div class="item-title">${vehicle.callsign}</div>
+                    <div class="item-details">${vehicle.vehicle_type} - Besatzung: ${vehicle.crew_count}</div>
+                    <div class="item-details">Standort: ${vehicle.location_name || 'Kein Standort'}</div>
+                </div>
+                <div class="item-actions">
+                    <button class="btn btn-secondary btn-sm" onclick="editVehicle(${vehicle.id})">Bearbeiten</button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteVehicle(${vehicle.id})">Löschen</button>
+                </div>
+            </div>
+        `).join('');
+    } catch (error) {
+        console.error('Error loading vehicles:', error);
+        alert('Fehler beim Laden der Fahrzeuge');
+    }
+}
+
+async function loadLocationsConfig() {
+    try {
+        const locations = await api.getLocations();
+        const locationsList = document.querySelector('#locationsConfigModal #locationsList');
+        
+        if (locations.length === 0) {
+            locationsList.innerHTML = '<p class="no-data">Keine Standorte vorhanden</p>';
+            return;
+        }
+        
+        locationsList.innerHTML = locations.map(location => `
+            <div class="list-item">
+                <div class="item-info">
+                    <div class="item-title">${location.name}</div>
+                    <div class="item-details">${location.address}</div>
+                    <div class="item-details">GPS: ${location.latitude}, ${location.longitude}</div>
+                </div>
+                <div class="item-actions">
+                    <button class="btn btn-secondary btn-sm" onclick="editLocation(${location.id})">Bearbeiten</button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteLocation(${location.id})">Löschen</button>
+                </div>
+            </div>
+        `).join('');
+    } catch (error) {
+        console.error('Error loading locations:', error);
+        alert('Fehler beim Laden der Standorte');
     }
 }
