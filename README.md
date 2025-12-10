@@ -125,8 +125,12 @@ Die Lagekarte visualisiert alle Einsatzstellen und Fahrzeugstandorte auf einer O
 
 **Funktionen:**
 - Darstellung aller Einsatzorte mit Markern
-- Anzeige der Fahrzeugstandorte
-- Unterschiedliche Symbole für verschiedene Fahrzeugtypen
+- **Linke Seitenleiste**: Zeigt alle im Einsatz befindlichen Fahrzeuge mit Auftragsnummern
+- **Rechte Seitenleiste**: Zeigt verfügbare Fahrzeuge gruppiert nach Standorten
+- Fahrzeuge werden mit ihren **taktischen Zeichen** anstatt Quadraten dargestellt
+- Fahrzeuge sind versetzt positioniert, um Einsatzstellen nicht zu verdecken
+- **Hover-Funktion**: Details werden beim Überfahren von Fahrzeugen und Einsatzstellen angezeigt
+- Rufnamen sind eindeutig und gut lesbar
 - Zoom und Pan-Funktionen für detaillierte Ansicht
 - Fallback auf Screenshot bei Netzwerkproblemen
 
