@@ -104,17 +104,23 @@ function renderAssignmentGroup(containerId, assignments) {
 }
 
 function updateVehiclesDisplay() {
-    // Get vehicles with active assignments
+    // Get vehicles with active assignments and all their assignments
     const activeVehicles = [];
     const inactiveVehiclesByLocation = {};
     
     dashboardData.vehicles.forEach(vehicle => {
-        const hasActiveAssignment = dashboardData.assignments.some(a => 
-            a.vehicles.includes(vehicle.callsign) && a.status !== 'completed'
+        // Find all assignments for this vehicle (not just active ones)
+        const vehicleAssignments = dashboardData.assignments.filter(a => 
+            a.vehicles.includes(vehicle.callsign)
         );
         
-        if (hasActiveAssignment) {
-            activeVehicles.push(vehicle);
+        const activeAssignments = vehicleAssignments.filter(a => a.status !== 'completed');
+        
+        if (activeAssignments.length > 0) {
+            activeVehicles.push({
+                vehicle: vehicle,
+                assignments: vehicleAssignments
+            });
         } else {
             const locationName = vehicle.location_name || 'Ohne Standort';
             if (!inactiveVehiclesByLocation[locationName]) {
@@ -131,31 +137,49 @@ function updateVehiclesDisplay() {
     renderVehiclesByLocation(inactiveVehiclesByLocation);
 }
 
-function renderActiveVehicles(vehicles) {
+function renderActiveVehicles(vehicleData) {
     const container = document.getElementById('activeVehicles');
     
-    if (vehicles.length === 0) {
+    if (vehicleData.length === 0) {
         container.innerHTML = '<p style="color: #95a5a6; padding: 10px;">Keine Fahrzeuge im Einsatz</p>';
         return;
     }
     
     container.innerHTML = '';
-    vehicles.forEach(vehicle => {
-        const assignment = dashboardData.assignments.find(a => 
-            a.vehicles.includes(vehicle.callsign) && a.status !== 'completed'
-        );
-        
+    vehicleData.forEach(({ vehicle, assignments }) => {
         const card = document.createElement('div');
         card.className = 'vehicle-card active';
         
+        // Separate active and completed assignments
+        const activeAssignments = assignments.filter(a => a.status !== 'completed');
+        const completedAssignments = assignments.filter(a => a.status === 'completed');
+        
+        // Build assignment numbers display
+        let assignmentsHtml = '';
+        if (assignments.length > 0) {
+            assignmentsHtml = '<div class="vehicle-assignments">';
+            
+            // Show active assignments first
+            activeAssignments.forEach((a, index) => {
+                const isFirst = index === 0;
+                assignmentsHtml += `<span class="assignment-badge ${isFirst ? 'active' : 'queued'}">${a.number}</span>`;
+            });
+            
+            // Show completed assignments
+            completedAssignments.forEach(a => {
+                assignmentsHtml += `<span class="assignment-badge completed">${a.number}</span>`;
+            });
+            
+            assignmentsHtml += '</div>';
+        }
+        
         card.innerHTML = `
-            <div>
+            <div class="vehicle-info">
                 <div class="vehicle-callsign">${vehicle.callsign}</div>
                 <div class="vehicle-type">${vehicle.vehicle_type || ''}</div>
                 <div class="vehicle-crew">👥 ${vehicle.crew_count}</div>
             </div>
-            ${assignment ? 
-                `<div class="vehicle-assignment">📋 ${assignment.number}</div>` : ''}
+            ${assignmentsHtml}
         `;
         
         container.appendChild(card);
@@ -175,18 +199,16 @@ function renderVehiclesByLocation(vehiclesByLocation) {
         group.appendChild(header);
         
         const list = document.createElement('div');
-        list.className = 'vehicle-list';
+        list.className = 'vehicle-list-grid';
         
         vehicles.forEach(vehicle => {
             const card = document.createElement('div');
-            card.className = 'vehicle-card';
+            card.className = 'vehicle-card inactive';
             
             card.innerHTML = `
-                <div>
-                    <div class="vehicle-callsign">${vehicle.callsign}</div>
-                    <div class="vehicle-type">${vehicle.vehicle_type || ''}</div>
-                    <div class="vehicle-crew">👥 ${vehicle.crew_count}</div>
-                </div>
+                <div class="vehicle-callsign-small">${vehicle.callsign}</div>
+                <div class="vehicle-type-small">${vehicle.vehicle_type || ''}</div>
+                <div class="vehicle-crew-small">👥 ${vehicle.crew_count}</div>
             `;
             
             list.appendChild(card);

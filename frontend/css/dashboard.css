@@ -65,7 +65,7 @@ body {
 }
 
 .assignment-group {
-    margin-bottom: 30px;
+    margin-bottom: 20px;
 }
 
 .status-header {
@@ -88,16 +88,18 @@ body {
 }
 
 .assignment-list {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 10px;
+    margin-bottom: 15px;
 }
 
 .assignment-card {
     background: #34495e;
-    padding: 15px;
+    padding: 12px;
     border-radius: 5px;
     border-left: 5px solid #3498db;
+    min-height: 100px;
 }
 
 .assignment-card.status-open {
@@ -114,25 +116,26 @@ body {
 }
 
 .assignment-number {
-    font-size: 14px;
+    font-size: 12px;
     color: #95a5a6;
     margin-bottom: 5px;
 }
 
 .assignment-title {
-    font-size: 20px;
+    font-size: 16px;
     font-weight: bold;
     margin-bottom: 5px;
 }
 
 .assignment-location {
-    font-size: 14px;
+    font-size: 12px;
     color: #bdc3c7;
+    margin-bottom: 5px;
 }
 
 .assignment-vehicles {
-    margin-top: 10px;
-    font-size: 14px;
+    margin-top: 8px;
+    font-size: 12px;
     color: #3498db;
 }
 
@@ -143,12 +146,12 @@ body {
 }
 
 .vehicle-group {
-    margin-bottom: 30px;
+    margin-bottom: 25px;
 }
 
 .vehicle-group h3 {
-    font-size: 18px;
-    padding: 10px;
+    font-size: 16px;
+    padding: 8px;
     background: #2c3e50;
     border-radius: 5px;
     margin-bottom: 10px;
@@ -164,18 +167,23 @@ body {
     gap: 10px;
 }
 
-.vehicle-card {
-    background: #2c3e50;
-    padding: 12px;
-    border-radius: 5px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+.vehicle-list-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 8px;
 }
 
+/* Active Vehicle Cards (larger) */
 .vehicle-card.active {
     background: #27ae60;
     border: 2px solid #2ecc71;
+    padding: 12px;
+    border-radius: 5px;
+    margin-bottom: 10px;
+}
+
+.vehicle-info {
+    margin-bottom: 8px;
 }
 
 .vehicle-callsign {
@@ -185,16 +193,75 @@ body {
 
 .vehicle-type {
     font-size: 14px;
-    color: #95a5a6;
+    color: #e8f5e9;
+    margin-top: 2px;
 }
 
 .vehicle-crew {
     font-size: 14px;
-    color: #3498db;
+    color: #c8e6c9;
+    margin-top: 2px;
 }
 
-.vehicle-assignment {
+/* Assignment Badges for Active Vehicles */
+.vehicle-assignments {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.assignment-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 3px;
     font-size: 12px;
-    color: #f39c12;
-    margin-top: 5px;
+    font-weight: bold;
+}
+
+.assignment-badge.active {
+    background: #fff;
+    color: #27ae60;
+    border: 2px solid #fff;
+}
+
+.assignment-badge.queued {
+    background: #81c784;
+    color: #1b5e20;
+    border: 2px solid #66bb6a;
+}
+
+.assignment-badge.completed {
+    background: #546e7a;
+    color: #b0bec5;
+    border: 2px solid #607d8b;
+    opacity: 0.6;
+}
+
+/* Inactive Vehicle Cards (smaller, gray) */
+.vehicle-card.inactive {
+    background: #546e7a;
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid #607d8b;
+    opacity: 0.8;
+    min-height: 70px;
+}
+
+.vehicle-callsign-small {
+    font-size: 14px;
+    font-weight: bold;
+    color: #b0bec5;
+}
+
+.vehicle-type-small {
+    font-size: 11px;
+    color: #90a4ae;
+    margin-top: 2px;
+}
+
+.vehicle-crew-small {
+    font-size: 11px;
+    color: #90a4ae;
+    margin-top: 2px;
 }
