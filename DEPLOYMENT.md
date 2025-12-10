@@ -39,6 +39,10 @@ python3 -c "import secrets; print(secrets.token_urlsafe(32))"
 
 ### 3. Start the Application
 
+#### Basic Deployment (Direct Access)
+
+For local LAN usage without reverse proxy:
+
 ```bash
 # Build and start services
 docker compose up -d
@@ -50,13 +54,77 @@ docker compose ps
 docker compose logs -f
 ```
 
+Application will be available at: `http://your-server:5000`
+
+#### With Caddy Reverse Proxy (Optional)
+
+For HTTPS or additional proxy features:
+
+```bash
+# Edit Caddyfile to configure your domain/port
+nano Caddyfile
+
+# Start with Caddy
+docker compose -f docker-compose.yml -f docker-compose.caddy.yml up -d
+
+# Check status
+docker compose ps
+
+# View logs
+docker compose logs -f
+```
+
+Application will be available at: `http://your-server` (or `https://` if configured)
+
 ### 4. Initial Setup
 
-1. Access the application at `http://your-server:8080`
+1. Access the application at `http://your-server:5000` (or your configured URL)
 2. Create your first operation
 3. Add locations (fire stations)
 4. Add vehicles
 5. Start managing assignments
+
+## Reverse Proxy Configuration
+
+### Caddy (Recommended for LAN)
+
+Caddy is included as an optional reverse proxy. Benefits:
+- Automatic HTTPS with Let's Encrypt
+- Simple configuration
+- Automatic certificate renewal
+- HTTP/2 and HTTP/3 support
+
+Edit `Caddyfile` for your needs:
+
+```caddyfile
+# Local LAN without HTTPS
+:80 {
+    reverse_proxy backend:5000
+}
+
+# Production with HTTPS
+tel-system.yourdomain.com {
+    reverse_proxy backend:5000
+}
+```
+
+### Other Reverse Proxies
+
+You can also use nginx, Traefik, or Apache. Example nginx configuration:
+
+```nginx
+server {
+    listen 80;
+    server_name tel-system.local;
+    
+    location / {
+        proxy_pass http://localhost:5000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+```
 
 ## Security Considerations
 
@@ -67,13 +135,18 @@ docker compose logs -f
 
 ### API Security
 - Change default API_KEY immediately
-- Use HTTPS in production (add reverse proxy)
+- Use HTTPS in production (with Caddy or other reverse proxy)
 - Rotate API keys regularly
 
 ### Network Security
 - Use firewall rules to restrict access
 - Consider VPN for internal use
-- Enable HTTPS with Let's Encrypt or similar
+- Enable HTTPS with Caddy or Let's Encrypt
+
+### Local LAN Deployment
+- For internal-only use, HTTPS may not be necessary
+- Restrict access via firewall to trusted networks
+- Use strong passwords even on internal networks
 
 ## Backup Strategy
 

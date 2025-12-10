@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 import os
@@ -6,7 +6,7 @@ import os
 db = SQLAlchemy()
 
 def create_app():
-    app = Flask(__name__)
+    app = Flask(__name__, static_folder='/app/static', static_url_path='')
     CORS(app)
     
     # Configuration
@@ -28,6 +28,18 @@ def create_app():
     app.register_blueprint(journal.bp)
     app.register_blueprint(settings.bp)
     app.register_blueprint(api_external.bp)
+    
+    # Serve static files
+    @app.route('/')
+    def index():
+        return send_from_directory('/app/static', 'index.html')
+    
+    @app.route('/<path:path>')
+    def serve_static(path):
+        if os.path.exists(os.path.join('/app/static', path)):
+            return send_from_directory('/app/static', path)
+        # If file doesn't exist, return index.html for client-side routing
+        return send_from_directory('/app/static', 'index.html')
     
     # Create tables
     with app.app_context():

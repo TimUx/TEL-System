@@ -28,6 +28,7 @@ services:
       SECRET_KEY: change-this-in-production
     volumes:
       - ./backend:/app
+      - ./frontend:/app/static
       - uploads:/app/uploads
     ports:
       - "5000:5000"
@@ -37,17 +38,6 @@ services:
     networks:
       - tel_network
     command: flask run --host=0.0.0.0
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    ports:
-      - "8080:80"
-    depends_on:
-      - backend
-    networks:
-      - tel_network
 
 volumes:
   postgres_data:

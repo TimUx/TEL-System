@@ -32,7 +32,7 @@ Ein webbasiertes Tool zur Planung und Koordination von großen Einsatzlagen wie 
 - **Frontend**: HTML5, CSS3, Vanilla JavaScript
 - **Karten**: Leaflet.js mit OpenStreetMap
 - **Container**: Docker & Docker Compose
-- **Webserver**: Nginx (für Frontend)
+- **Reverse Proxy**: Optional Caddy (für HTTPS)
 
 ## Installation & Start
 
@@ -51,12 +51,25 @@ cd TEL-System
 
 2. System starten:
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 3. Anwendung öffnen:
-- Frontend: http://localhost:8080
-- Backend API: http://localhost:5000
+- Anwendung: http://localhost:5000
+
+### Mit optionalem Caddy Reverse Proxy (z.B. für HTTPS)
+
+Wenn Sie HTTPS oder zusätzliche Proxy-Features benötigen:
+
+```bash
+# Caddy-Konfiguration anpassen (optional)
+nano Caddyfile
+
+# System mit Caddy starten
+docker compose -f docker-compose.yml -f docker-compose.caddy.yml up -d
+```
+
+Dann ist die Anwendung unter http://localhost erreichbar (Port 80).
 
 ### Erstmalige Einrichtung
 

@@ -1,0 +1,28 @@
+version: '3.8'
+
+# Optional Caddy reverse proxy configuration
+# Use this if you want HTTPS or additional proxy features
+# Usage: docker compose -f docker-compose.yml -f docker-compose.caddy.yml up -d
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - tel_network
+    depends_on:
+      - backend
+
+  backend:
+    # Override port mapping - Caddy will handle external access
+    ports: []
+
+volumes:
+  caddy_data:
+  caddy_config:
