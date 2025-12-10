@@ -13,6 +13,8 @@ Ein webbasiertes Tool zur Planung und Koordination von großen Einsatzlagen wie 
   - [Einsatztagebuch](#einsatztagebuch)
   - [Dashboard](#dashboard)
   - [Lagekarte](#lagekarte)
+  - [Standorte hinzufügen](#standorte-hinzufügen)
+  - [Fahrzeuge hinzufügen](#fahrzeuge-hinzufügen)
   - [Historie](#historie)
 - [Technologie-Stack](#technologie-stack)
 - [Installation & Start](#installation--start)
@@ -103,21 +105,23 @@ Das Einsatztagebuch dokumentiert automatisch alle wichtigen Ereignisse während 
 
 Das Dashboard ist für die Anzeige auf einem Beamer optimiert und bietet eine übersichtliche Darstellung aller wichtigen Informationen in Echtzeit.
 
-![Dashboard in Full HD](screenshots/04-dashboard.png)
+![Dashboard in Full HD](screenshots/04-dashboard-new.png)
 
 **Funktionen:**
 - Übersicht über Anzahl der Aufträge, eingesetzten Fahrzeuge und Personal
 - Große, gut lesbare Auftragsnummern (001, 002, 003) für optimale Sichtbarkeit auf Großbildschirmen
 - Farbcodierte Darstellung der Auftragsstatus (Offen: Rot, Zugewiesen: Orange, Beendet: Grün)
-- Fahrzeuge mit mehreren Aufträgen werden übersichtlich mit allen Nummern angezeigt
-- Gruppierte Anzeige der Fahrzeuge nach Standorten
+- Fahrzeuge mit mehreren Aufträgen werden übersichtlich mit allen Nummern angezeigt (z.B. Florian 2-11-1, 3-10-1 und 3-19-1 auf Auftrag 004)
+- Getrennte Anzeige von offenen, zugewiesenen und abgeschlossenen Aufträgen
+- Zugewiesene Fahrzeuge werden direkt bei den Aufträgen angezeigt
+- Im Einsatz befindliche Fahrzeuge werden mit Auftragsnummern auf der rechten Seite dargestellt
 - Automatische Aktualisierung ohne Seitenneuladen
 
 ### Lagekarte
 
 Die Lagekarte visualisiert alle Einsatzstellen und Fahrzeugstandorte auf einer OpenStreetMap-Karte. Bei Firewall-Problemen wird automatisch ein Screenshot als Fallback verwendet.
 
-![Lagekarte](screenshots/03-lagekarte.png)
+![Lagekarte](screenshots/03-lagekarte-new.png)
 
 **Funktionen:**
 - Darstellung aller Einsatzorte mit Markern
@@ -125,6 +129,30 @@ Die Lagekarte visualisiert alle Einsatzstellen und Fahrzeugstandorte auf einer O
 - Unterschiedliche Symbole für verschiedene Fahrzeugtypen
 - Zoom und Pan-Funktionen für detaillierte Ansicht
 - Fallback auf Screenshot bei Netzwerkproblemen
+
+### Standorte hinzufügen
+
+Standorte können über die Einstellungen verwaltet werden. Sie sind permanente Konfigurationen und stehen für alle Einsatzlagen zur Verfügung.
+
+![Standort hinzufügen](screenshots/06-standort-formular.png)
+
+**Funktionen:**
+- Erfassung von Standortnamen
+- Automatische GPS-Koordinaten-Ermittlung über Adresseingabe
+- Standorte werden für Fahrzeugzuweisungen verwendet
+
+### Fahrzeuge hinzufügen
+
+Fahrzeuge können über die Einstellungen verwaltet werden. Jedes Fahrzeug kann einem Standort zugeordnet werden.
+
+![Fahrzeug hinzufügen](screenshots/07-fahrzeug-formular.png)
+
+**Funktionen:**
+- Erfassung von Rufname und Fahrzeugtyp
+- Besatzungsstärke kann angegeben werden
+- Zuordnung zu einem Feuerwehrstandort
+- Verschiedene Fahrzeugtypen verfügbar (HLF, DLK, TLF, RW, etc.)
+- Fahrzeuge können mehreren Aufträgen zugewiesen werden
 
 ### Historie
 
