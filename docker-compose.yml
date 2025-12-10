@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: tel_system
+      POSTGRES_USER: tel_user
+      POSTGRES_PASSWORD: tel_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - tel_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tel_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql://tel_user:tel_password@db:5432/tel_system
+      FLASK_APP: app.py
+      FLASK_ENV: development
+      SECRET_KEY: change-this-in-production
+    volumes:
+      - ./backend:/app
+      - uploads:/app/uploads
+    ports:
+      - "5000:5000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - tel_network
+    command: flask run --host=0.0.0.0
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    networks:
+      - tel_network
+
+volumes:
+  postgres_data:
+  uploads:
+
+networks:
+  tel_network:
+    driver: bridge

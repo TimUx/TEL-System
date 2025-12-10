@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Historie - TEL-System</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Einsatzlagen Historie</h1>
+            <div class="header-actions">
+                <button onclick="window.close()" class="btn btn-secondary">Schließen</button>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th>Nummer</th>
+                        <th>Titel</th>
+                        <th>Erstellt</th>
+                        <th>Geschlossen</th>
+                        <th>Status</th>
+                        <th>Aktionen</th>
+                    </tr>
+                </thead>
+                <tbody id="historyTableBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/history.js"></script>
+</body>
+</html>

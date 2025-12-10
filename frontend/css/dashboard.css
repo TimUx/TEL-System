@@ -1,0 +1,200 @@
+/* Dashboard Styles - Optimized for beamer/large screen */
+body {
+    margin: 0;
+    padding: 0;
+    background: #1a1a1a;
+    color: #fff;
+}
+
+.dashboard {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+/* Statistics Bar */
+.stats-bar {
+    background: #2c3e50;
+    padding: 20px;
+    display: flex;
+    justify-content: space-around;
+    border-bottom: 3px solid #3498db;
+}
+
+.stat-item {
+    text-align: center;
+}
+
+.stat-label {
+    font-size: 16px;
+    color: #bdc3c7;
+    margin-bottom: 5px;
+}
+
+.stat-value {
+    font-size: 36px;
+    font-weight: bold;
+    color: #3498db;
+}
+
+/* Dashboard Content */
+.dashboard-content {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.dashboard-column {
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.dashboard-column h2 {
+    font-size: 24px;
+    margin-bottom: 20px;
+    color: #3498db;
+    border-bottom: 2px solid #3498db;
+    padding-bottom: 10px;
+}
+
+/* Assignments Column (Left) */
+.assignments-column {
+    flex: 1;
+    background: #2c3e50;
+    border-right: 2px solid #34495e;
+}
+
+.assignment-group {
+    margin-bottom: 30px;
+}
+
+.status-header {
+    font-size: 18px;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+}
+
+.status-header.status-open {
+    background: #e74c3c;
+}
+
+.status-header.status-assigned {
+    background: #f39c12;
+}
+
+.status-header.status-completed {
+    background: #27ae60;
+}
+
+.assignment-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.assignment-card {
+    background: #34495e;
+    padding: 15px;
+    border-radius: 5px;
+    border-left: 5px solid #3498db;
+}
+
+.assignment-card.status-open {
+    border-left-color: #e74c3c;
+}
+
+.assignment-card.status-assigned {
+    border-left-color: #f39c12;
+}
+
+.assignment-card.status-completed {
+    border-left-color: #27ae60;
+    opacity: 0.7;
+}
+
+.assignment-number {
+    font-size: 14px;
+    color: #95a5a6;
+    margin-bottom: 5px;
+}
+
+.assignment-title {
+    font-size: 20px;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.assignment-location {
+    font-size: 14px;
+    color: #bdc3c7;
+}
+
+.assignment-vehicles {
+    margin-top: 10px;
+    font-size: 14px;
+    color: #3498db;
+}
+
+/* Vehicles Column (Right) */
+.vehicles-column {
+    flex: 1;
+    background: #34495e;
+}
+
+.vehicle-group {
+    margin-bottom: 30px;
+}
+
+.vehicle-group h3 {
+    font-size: 18px;
+    padding: 10px;
+    background: #2c3e50;
+    border-radius: 5px;
+    margin-bottom: 10px;
+}
+
+.vehicle-group.in-use h3 {
+    background: #27ae60;
+}
+
+.vehicle-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.vehicle-card {
+    background: #2c3e50;
+    padding: 12px;
+    border-radius: 5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.vehicle-card.active {
+    background: #27ae60;
+    border: 2px solid #2ecc71;
+}
+
+.vehicle-callsign {
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.vehicle-type {
+    font-size: 14px;
+    color: #95a5a6;
+}
+
+.vehicle-crew {
+    font-size: 14px;
+    color: #3498db;
+}
+
+.vehicle-assignment {
+    font-size: 12px;
+    color: #f39c12;
+    margin-top: 5px;
+}
