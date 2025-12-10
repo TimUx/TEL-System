@@ -4,6 +4,13 @@ let assignments = [];
 let vehicles = [];
 let locations = [];
 
+// Helper function to extract sequential number from assignment number
+function getSequentialNumber(assignmentNumber) {
+    if (!assignmentNumber) return '';
+    const parts = assignmentNumber.split('-');
+    return parts.length > 0 ? parts[parts.length - 1] : assignmentNumber;
+}
+
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
     await loadActiveOperation();
@@ -198,7 +205,7 @@ function openJournalModal() {
     assignments.forEach(assignment => {
         const option = document.createElement('option');
         option.value = assignment.id;
-        option.textContent = `${assignment.number} - ${assignment.title}`;
+        option.textContent = `${getSequentialNumber(assignment.number)} - ${assignment.title}`;
         assignmentSelect.appendChild(option);
     });
     
@@ -330,7 +337,7 @@ function renderAssignments() {
         item.innerHTML = `
             <div class="list-item-header">
                 <div>
-                    <div class="list-item-number">${assignment.number}</div>
+                    <div class="list-item-number">${getSequentialNumber(assignment.number)}</div>
                     <div class="list-item-title">${assignment.title}</div>
                 </div>
                 <div class="list-item-actions">
@@ -437,7 +444,7 @@ async function renderJournal() {
                 <div class="journal-entry-time">${formatDate(entry.timestamp)}</div>
                 <div class="journal-entry-type">${entry.entry_type}</div>
             </div>
-            ${entry.assignment_number ? `<div><strong>Auftrag:</strong> ${entry.assignment_number}</div>` : ''}
+            ${entry.assignment_number ? `<div><strong>Auftrag:</strong> ${getSequentialNumber(entry.assignment_number)}</div>` : ''}
             <div class="journal-entry-content">${entry.content}</div>
         `;
         
@@ -472,7 +479,7 @@ async function manageVehicles(assignmentId) {
         !assignment.vehicles.includes(v.callsign)
     );
     
-    let message = `Auftrag: ${assignment.number} - ${assignment.title}\n\n`;
+    let message = `Auftrag: ${getSequentialNumber(assignment.number)} - ${assignment.title}\n\n`;
     message += `Zugewiesene Fahrzeuge:\n`;
     assignment.vehicles.forEach(v => message += `- ${v}\n`);
     message += `\nVerfügbare Fahrzeuge:\n`;
