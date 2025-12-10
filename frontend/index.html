@@ -13,13 +13,20 @@
             <h1>TEL</h1>
             <div class="header-actions">
                 <button id="newOperationBtn" class="btn btn-primary">Neue Einsatzlage</button>
-                <button id="openMapBtn" class="btn btn-secondary">Lagekarte öffnen</button>
-                <button id="openDashboardBtn" class="btn btn-secondary">Dashboard öffnen</button>
-                <button id="vehiclesConfigBtn" class="btn btn-secondary">Fahrzeuge</button>
-                <button id="locationsConfigBtn" class="btn btn-secondary">Standorte</button>
-                <button id="historyBtn" class="btn btn-secondary">Historie</button>
-                <button id="settingsBtn" class="btn btn-secondary">Einstellungen</button>
-                <button id="closeOperationBtn" class="btn btn-danger">Lage schließen</button>
+                <button id="openMapBtn" class="btn btn-secondary" style="display: none;">Lagekarte öffnen</button>
+                <button id="openDashboardBtn" class="btn btn-secondary" style="display: none;">Dashboard öffnen</button>
+                <button id="closeOperationBtn" class="btn btn-danger" style="display: none;">Lage schließen</button>
+                <div class="dropdown">
+                    <button id="settingsMenuBtn" class="btn btn-secondary">
+                        ⚙️ Einstellungen
+                    </button>
+                    <div id="settingsDropdown" class="dropdown-content">
+                        <button id="vehiclesConfigBtn" class="dropdown-item">Fahrzeuge</button>
+                        <button id="locationsConfigBtn" class="dropdown-item">Standorte</button>
+                        <button id="historyBtn" class="dropdown-item">Historie</button>
+                        <button id="settingsBtn" class="dropdown-item">Email-Einstellungen</button>
+                    </div>
+                </div>
             </div>
         </header>
 
