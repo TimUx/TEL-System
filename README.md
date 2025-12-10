@@ -71,12 +71,15 @@ Die Anwendung wurde speziell für Feuerwehren und andere Hilfsorganisationen ent
 
 ### Hauptseite - Auftragsverwaltung
 
-Die Hauptseite bietet eine übersichtliche Darstellung der aktiven Einsatzlage mit allen offenen und zugewiesenen Aufträgen. Über die Navigation können verschiedene Funktionen wie Lagekarte, Dashboard, Fahrzeuge, Standorte und Historie aufgerufen werden.
+Die Hauptseite bietet eine übersichtliche Darstellung der aktiven Einsatzlage mit allen offenen und zugewiesenen Aufträgen. Die Navigation wurde optimiert für bessere Übersichtlichkeit.
 
 ![Hauptseite mit Auftragsverwaltung](screenshots/01-hauptseite-auftraege.png)
 
 **Funktionen:**
-- Kompakter "TEL"-Header für übersichtliche Navigation
+- Kompakter "TEL"-Header mit optimierter Navigation
+- **Neue Einsatzlage**: Button nur sichtbar wenn keine aktive Lage vorhanden ist
+- **Lagekarte & Dashboard**: Buttons nur sichtbar wenn eine aktive Einsatzlage vorhanden ist
+- **Einstellungen-Menü**: Dropdown-Menü (⚙️) für Fahrzeuge, Standorte, Historie und Email-Einstellungen
 - Anzeige der aktuellen Einsatzlage mit Nummer, Titel und Beschreibung
 - Liste aller Aufträge mit fortlaufender Nummer (z.B. 001, 002, 003) für bessere Übersicht
 - Zugewiesene Fahrzeuge werden bei jedem Auftrag angezeigt
@@ -112,7 +115,7 @@ Das Dashboard ist für die Anzeige auf einem Beamer optimiert und bietet eine ü
 
 ### Lagekarte
 
-Die Lagekarte visualisiert alle Einsatzstellen und Fahrzeugstandorte auf einer interaktiven OpenStreetMap-Karte.
+Die Lagekarte visualisiert alle Einsatzstellen und Fahrzeugstandorte auf einer OpenStreetMap-Karte. Bei Firewall-Problemen wird automatisch ein Screenshot als Fallback verwendet.
 
 ![Lagekarte](screenshots/03-lagekarte.png)
 
@@ -121,6 +124,7 @@ Die Lagekarte visualisiert alle Einsatzstellen und Fahrzeugstandorte auf einer i
 - Anzeige der Fahrzeugstandorte
 - Unterschiedliche Symbole für verschiedene Fahrzeugtypen
 - Zoom und Pan-Funktionen für detaillierte Ansicht
+- Fallback auf Screenshot bei Netzwerkproblemen
 
 ### Historie
 
