@@ -11,13 +11,6 @@ let dashboardData = {
 const VEHICLE_OFFSET_DISTANCE = 0.002; // Approximately 200 meters in degrees
 const VEHICLE_OFFSET_ANGLE_STEP = 60; // Degrees between vehicles in circular pattern
 
-// Helper function to extract sequential number from assignment number
-function getSequentialNumber(assignmentNumber) {
-    if (!assignmentNumber) return '';
-    const parts = assignmentNumber.split('-');
-    return parts.length > 0 ? parts[parts.length - 1] : assignmentNumber;
-}
-
 // Initialize map
 document.addEventListener('DOMContentLoaded', async () => {
     // Check if Leaflet is available

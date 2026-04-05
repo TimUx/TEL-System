@@ -5,13 +5,6 @@ let dashboardData = {
     operation: null
 };
 
-// Helper function to extract sequential number from assignment number
-function getSequentialNumber(assignmentNumber) {
-    if (!assignmentNumber) return '';
-    const parts = assignmentNumber.split('-');
-    return parts.length > 0 ? parts[parts.length - 1] : assignmentNumber;
-}
-
 document.addEventListener('DOMContentLoaded', async () => {
     await updateDashboard();
     setInterval(updateDashboard, 3000); // Update every 3 seconds

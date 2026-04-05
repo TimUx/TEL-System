@@ -44,12 +44,6 @@ function renderHistory(operations) {
     });
 }
 
-function formatDate(dateString) {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleString('de-DE');
-}
-
 async function exportOperation(id) {
     alert('PDF Export Funktion wird implementiert.\nDiese Funktion erstellt ein PDF mit dem kompletten Einsatztagebuch und einer Lagekarte.');
     // TODO: Implement PDF export

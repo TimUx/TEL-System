@@ -4,13 +4,6 @@ let assignments = [];
 let vehicles = [];
 let locations = [];
 
-// Helper function to extract sequential number from assignment number
-function getSequentialNumber(assignmentNumber) {
-    if (!assignmentNumber) return '';
-    const parts = assignmentNumber.split('-');
-    return parts.length > 0 ? parts[parts.length - 1] : assignmentNumber;
-}
-
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
     await loadActiveOperation();
@@ -487,12 +480,6 @@ async function renderJournal() {
 }
 
 // Helper Functions
-function formatDate(dateString) {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleString('de-DE');
-}
-
 async function editAssignment(id) {
     const assignment = assignments.find(a => a.id === id);
     if (assignment) openAssignmentModal(assignment);
