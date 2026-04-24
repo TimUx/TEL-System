@@ -1,42 +1,81 @@
 // API Base URL
 const API_BASE = '/api';
+const JSON_HEADERS = { 'Content-Type': 'application/json' };
+const INTERNAL_API_KEY = localStorage.getItem('TEL_INTERNAL_API_KEY');
+
+function buildHeaders(baseHeaders = {}) {
+    if (!INTERNAL_API_KEY) return baseHeaders;
+    return {
+        ...baseHeaders,
+        'X-Internal-API-Key': INTERNAL_API_KEY
+    };
+}
+
+async function requestJson(url, options = {}) {
+    const response = await fetch(url, {
+        ...options,
+        headers: buildHeaders(options.headers || {})
+    });
+
+    const contentType = response.headers.get('content-type') || '';
+    const payload = contentType.includes('application/json')
+        ? await response.json()
+        : await response.text();
+
+    if (!response.ok) {
+        const message = payload && payload.error ? payload.error : `Request failed with status ${response.status}`;
+        throw new Error(message);
+    }
+
+    return payload;
+}
+
+async function getJson(url) {
+    return requestJson(url);
+}
+
+async function postJson(url, data = null) {
+    const options = { method: 'POST' };
+    if (data !== null) {
+        options.headers = JSON_HEADERS;
+        options.body = JSON.stringify(data);
+    }
+    return requestJson(url, options);
+}
+
+async function putJson(url, data) {
+    return requestJson(url, {
+        method: 'PUT',
+        headers: JSON_HEADERS,
+        body: JSON.stringify(data)
+    });
+}
+
+async function deleteJson(url) {
+    return requestJson(url, { method: 'DELETE' });
+}
 
 // API Helper Functions
 const api = {
     // Operations
     async getOperations() {
-        const response = await fetch(`${API_BASE}/operations/`);
-        return response.json();
+        return getJson(`${API_BASE}/operations/`);
     },
     
     async getActiveOperation() {
-        const response = await fetch(`${API_BASE}/operations/active`);
-        return response.json();
+        return getJson(`${API_BASE}/operations/active`);
     },
     
     async createOperation(data) {
-        const response = await fetch(`${API_BASE}/operations/`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
-        return response.json();
+        return postJson(`${API_BASE}/operations/`, data);
     },
     
     async updateOperation(id, data) {
-        const response = await fetch(`${API_BASE}/operations/${id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
-        return response.json();
+        return putJson(`${API_BASE}/operations/${id}`, data);
     },
     
     async closeOperation(id) {
-        const response = await fetch(`${API_BASE}/operations/${id}/close`, {
-            method: 'POST'
-        });
-        return response.json();
+        return postJson(`${API_BASE}/operations/${id}/close`);
     },
     
     // Assignments
@@ -44,116 +83,65 @@ const api = {
         const url = operationId ? 
             `${API_BASE}/assignments/?operation_id=${operationId}` :
             `${API_BASE}/assignments/`;
-        const response = await fetch(url);
-        return response.json();
+        return getJson(url);
     },
     
     async createAssignment(data) {
-        const response = await fetch(`${API_BASE}/assignments/`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
-        return response.json();
+        return postJson(`${API_BASE}/assignments/`, data);
     },
     
     async updateAssignment(id, data) {
-        const response = await fetch(`${API_BASE}/assignments/${id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
-        return response.json();
+        return putJson(`${API_BASE}/assignments/${id}`, data);
     },
     
     async completeAssignment(id) {
-        const response = await fetch(`${API_BASE}/assignments/${id}/complete`, {
-            method: 'POST'
-        });
-        return response.json();
+        return postJson(`${API_BASE}/assignments/${id}/complete`);
     },
     
     async assignVehicle(assignmentId, vehicleId) {
-        const response = await fetch(`${API_BASE}/assignments/${assignmentId}/vehicles`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ vehicle_id: vehicleId })
-        });
-        return response.json();
+        return postJson(`${API_BASE}/assignments/${assignmentId}/vehicles`, { vehicle_id: vehicleId });
     },
     
     async unassignVehicle(assignmentId, vehicleId) {
-        const response = await fetch(`${API_BASE}/assignments/${assignmentId}/vehicles/${vehicleId}`, {
-            method: 'DELETE'
-        });
-        return response.json();
+        return deleteJson(`${API_BASE}/assignments/${assignmentId}/vehicles/${vehicleId}`);
     },
     
     // Vehicles
     async getVehicles() {
-        const response = await fetch(`${API_BASE}/vehicles/`);
-        return response.json();
+        return getJson(`${API_BASE}/vehicles/`);
     },
     
     async getVehiclesByLocation() {
-        const response = await fetch(`${API_BASE}/vehicles/by-location`);
-        return response.json();
+        return getJson(`${API_BASE}/vehicles/by-location`);
     },
     
     async createVehicle(data) {
-        const response = await fetch(`${API_BASE}/vehicles/`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
-        return response.json();
+        return postJson(`${API_BASE}/vehicles/`, data);
     },
     
     async updateVehicle(id, data) {
-        const response = await fetch(`${API_BASE}/vehicles/${id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
-        return response.json();
+        return putJson(`${API_BASE}/vehicles/${id}`, data);
     },
     
     async deleteVehicle(id) {
-        const response = await fetch(`${API_BASE}/vehicles/${id}`, {
-            method: 'DELETE'
-        });
-        return response.json();
+        return deleteJson(`${API_BASE}/vehicles/${id}`);
     },
     
     // Locations
     async getLocations() {
-        const response = await fetch(`${API_BASE}/locations/`);
-        return response.json();
+        return getJson(`${API_BASE}/locations/`);
     },
     
     async createLocation(data) {
-        const response = await fetch(`${API_BASE}/locations/`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
-        return response.json();
+        return postJson(`${API_BASE}/locations/`, data);
     },
     
     async updateLocation(id, data) {
-        const response = await fetch(`${API_BASE}/locations/${id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
-        return response.json();
+        return putJson(`${API_BASE}/locations/${id}`, data);
     },
     
     async deleteLocation(id) {
-        const response = await fetch(`${API_BASE}/locations/${id}`, {
-            method: 'DELETE'
-        });
-        return response.json();
+        return deleteJson(`${API_BASE}/locations/${id}`);
     },
     
     // Journal
@@ -164,16 +152,10 @@ const api = {
         if (assignmentId) params.append('assignment_id', assignmentId);
         if (params.toString()) url += '?' + params.toString();
         
-        const response = await fetch(url);
-        return response.json();
+        return getJson(url);
     },
     
     async createJournalEntry(data) {
-        const response = await fetch(`${API_BASE}/journal/`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
-        return response.json();
+        return postJson(`${API_BASE}/journal/`, data);
     }
 };

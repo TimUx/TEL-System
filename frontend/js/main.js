@@ -1,8 +1,14 @@
 // Main Application Logic
-let currentOperation = null;
-let assignments = [];
-let vehicles = [];
-let locations = [];
+const { state } = window.appState;
+const {
+    byId,
+    setVisibility,
+    setModalActive,
+    openModalWithReset,
+    renderEmptyState,
+    fillSelectFromItems
+} = window.uiHelpers;
+const e = escapeHtml;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
@@ -13,43 +19,39 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function loadActiveOperation() {
-    currentOperation = await api.getActiveOperation();
+    appState.setCurrentOperation(await api.getActiveOperation());
     updateOperationDisplay();
 }
 
 function updateOperationDisplay() {
-    const operationInfo = document.getElementById('operationInfo');
-    const operationDetails = document.getElementById('operationDetails');
-    const closeBtn = document.getElementById('closeOperationBtn');
-    const newOperationBtn = document.getElementById('newOperationBtn');
-    const openMapBtn = document.getElementById('openMapBtn');
-    const openDashboardBtn = document.getElementById('openDashboardBtn');
-    
-    if (currentOperation) {
+    const operationInfo = byId('operationInfo');
+    const operationDetails = byId('operationDetails');
+
+    if (state.currentOperation) {
         operationInfo.style.display = 'block';
         operationDetails.innerHTML = `
-            <p><strong>Nummer:</strong> ${currentOperation.number}</p>
-            <p><strong>Titel:</strong> ${currentOperation.title}</p>
-            <p><strong>Erstellt:</strong> ${formatDate(currentOperation.created_at)}</p>
-            ${currentOperation.description ? `<p><strong>Beschreibung:</strong> ${currentOperation.description}</p>` : ''}
+            <p><strong>Nummer:</strong> ${e(state.currentOperation.number)}</p>
+            <p><strong>Titel:</strong> ${e(state.currentOperation.title)}</p>
+            <p><strong>Erstellt:</strong> ${formatDate(state.currentOperation.created_at)}</p>
+            ${state.currentOperation.description ? `<p><strong>Beschreibung:</strong> ${e(state.currentOperation.description)}</p>` : ''}
         `;
-        closeBtn.style.display = 'inline-block';
-        newOperationBtn.style.display = 'none';
-        openMapBtn.style.display = 'inline-block';
-        openDashboardBtn.style.display = 'inline-block';
+        setVisibility('closeOperationBtn', true);
+        setVisibility('newOperationBtn', false);
+        setVisibility('openMapBtn', true);
+        setVisibility('openDashboardBtn', true);
     } else {
         operationInfo.style.display = 'none';
-        closeBtn.style.display = 'none';
-        newOperationBtn.style.display = 'inline-block';
-        openMapBtn.style.display = 'none';
-        openDashboardBtn.style.display = 'none';
+        setVisibility('closeOperationBtn', false);
+        setVisibility('newOperationBtn', true);
+        setVisibility('openMapBtn', false);
+        setVisibility('openDashboardBtn', false);
     }
 }
 
 async function loadData() {
-    assignments = await api.getAssignments();
-    vehicles = await api.getVehicles();
-    locations = await api.getLocations();
+    appState.setAssignments(await api.getAssignments());
+    appState.setVehicles(await api.getVehicles());
+    appState.setLocations(await api.getLocations());
     
     renderAssignments();
     renderVehicles();
@@ -78,31 +80,31 @@ function setupTabs() {
 // Event Listeners
 function setupEventListeners() {
     // Operation Modal
-    document.getElementById('newOperationBtn').addEventListener('click', openOperationModal);
-    document.getElementById('operationForm').addEventListener('submit', handleOperationSubmit);
+    byId('newOperationBtn').addEventListener('click', openOperationModal);
+    byId('operationForm').addEventListener('submit', handleOperationSubmit);
     
     // Assignment Modal
-    document.getElementById('newAssignmentBtn').addEventListener('click', () => openAssignmentModal());
-    document.getElementById('assignmentForm').addEventListener('submit', handleAssignmentSubmit);
+    byId('newAssignmentBtn').addEventListener('click', () => openAssignmentModal());
+    byId('assignmentForm').addEventListener('submit', handleAssignmentSubmit);
     
     // Vehicle Modal
-    document.getElementById('newVehicleBtn').addEventListener('click', () => openVehicleModal());
-    document.getElementById('vehicleForm').addEventListener('submit', handleVehicleSubmit);
+    byId('newVehicleBtn').addEventListener('click', () => openVehicleModal());
+    byId('vehicleForm').addEventListener('submit', handleVehicleSubmit);
     
     // Location Modal
-    document.getElementById('newLocationBtn').addEventListener('click', () => openLocationModal());
-    document.getElementById('locationForm').addEventListener('submit', handleLocationSubmit);
+    byId('newLocationBtn').addEventListener('click', () => openLocationModal());
+    byId('locationForm').addEventListener('submit', handleLocationSubmit);
     
     // Journal Modal
-    document.getElementById('newJournalEntryBtn').addEventListener('click', openJournalModal);
-    document.getElementById('journalForm').addEventListener('submit', handleJournalSubmit);
+    byId('newJournalEntryBtn').addEventListener('click', openJournalModal);
+    byId('journalForm').addEventListener('submit', handleJournalSubmit);
     
     // Close Operation
-    document.getElementById('closeOperationBtn').addEventListener('click', handleCloseOperation);
+    byId('closeOperationBtn').addEventListener('click', handleCloseOperation);
     
     // Settings Dropdown Menu
-    const settingsMenuBtn = document.getElementById('settingsMenuBtn');
-    const settingsDropdown = document.getElementById('settingsDropdown');
+    const settingsMenuBtn = byId('settingsMenuBtn');
+    const settingsDropdown = byId('settingsDropdown');
     
     settingsMenuBtn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -117,22 +119,22 @@ function setupEventListeners() {
     });
     
     // Configuration Modals
-    document.getElementById('vehiclesConfigBtn').addEventListener('click', () => {
+    byId('vehiclesConfigBtn').addEventListener('click', () => {
         settingsDropdown.classList.remove('active');
         openVehiclesConfig();
     });
-    document.getElementById('locationsConfigBtn').addEventListener('click', () => {
+    byId('locationsConfigBtn').addEventListener('click', () => {
         settingsDropdown.classList.remove('active');
         openLocationsConfig();
     });
-    document.getElementById('historyBtn').addEventListener('click', () => {
+    byId('historyBtn').addEventListener('click', () => {
         settingsDropdown.classList.remove('active');
         window.open('history.html', 'history', 'width=1200,height=800');
     });
     
     // Open Windows
-    document.getElementById('openMapBtn').addEventListener('click', () => window.open('map.html', 'map', 'width=1200,height=800'));
-    document.getElementById('openDashboardBtn').addEventListener('click', () => window.open('dashboard.html', 'dashboard', 'width=1600,height=900'));
+    byId('openMapBtn').addEventListener('click', () => window.open('map.html', 'map', 'width=1200,height=800'));
+    byId('openDashboardBtn').addEventListener('click', () => window.open('dashboard.html', 'dashboard', 'width=1600,height=900'));
     
     // Close modals
     document.querySelectorAll('.close').forEach(closeBtn => {
@@ -144,99 +146,95 @@ function setupEventListeners() {
 
 // Modal Functions
 function openOperationModal() {
-    document.getElementById('operationForm').reset();
-    document.getElementById('operationModal').classList.add('active');
+    openModalWithReset('operationForm', 'operationModal');
 }
 
 function openAssignmentModal(assignment = null) {
-    if (!currentOperation) {
+    if (!state.currentOperation) {
         alert('Bitte zuerst eine Einsatzlage erstellen!');
         return;
     }
     
-    const form = document.getElementById('assignmentForm');
+    const form = byId('assignmentForm');
     form.reset();
     
     if (assignment) {
-        document.getElementById('assignmentModalTitle').textContent = 'Auftrag bearbeiten';
-        document.getElementById('assignmentId').value = assignment.id;
-        document.getElementById('assignmentTitle').value = assignment.title;
-        document.getElementById('assignmentLocation').value = assignment.location_address || '';
-        document.getElementById('assignmentDescription').value = assignment.description || '';
-        document.getElementById('assignmentLat').value = assignment.latitude || '';
-        document.getElementById('assignmentLon').value = assignment.longitude || '';
+        byId('assignmentModalTitle').textContent = 'Auftrag bearbeiten';
+        byId('assignmentId').value = assignment.id;
+        byId('assignmentTitle').value = assignment.title;
+        byId('assignmentLocation').value = assignment.location_address || '';
+        byId('assignmentDescription').value = assignment.description || '';
+        byId('assignmentLat').value = assignment.latitude || '';
+        byId('assignmentLon').value = assignment.longitude || '';
     } else {
-        document.getElementById('assignmentModalTitle').textContent = 'Neuer Auftrag';
+        byId('assignmentModalTitle').textContent = 'Neuer Auftrag';
     }
     
-    document.getElementById('assignmentModal').classList.add('active');
+    setModalActive('assignmentModal', true);
 }
 
 function openVehicleModal(vehicle = null) {
-    const form = document.getElementById('vehicleForm');
+    const form = byId('vehicleForm');
     form.reset();
     
-    // Load locations into select
-    const locationSelect = document.getElementById('vehicleLocation');
-    locationSelect.innerHTML = '<option value="">Kein Standort</option>';
-    locations.forEach(loc => {
-        const option = document.createElement('option');
-        option.value = loc.id;
-        option.textContent = loc.name;
-        locationSelect.appendChild(option);
-    });
+    fillSelectFromItems(
+        'vehicleLocation',
+        state.locations,
+        (loc) => ({ value: loc.id, text: loc.name }),
+        '<option value="">Kein Standort</option>'
+    );
     
     if (vehicle) {
-        document.getElementById('vehicleModalTitle').textContent = 'Fahrzeug bearbeiten';
-        document.getElementById('vehicleId').value = vehicle.id;
-        document.getElementById('vehicleCallsign').value = vehicle.callsign;
-        document.getElementById('vehicleType').value = vehicle.vehicle_type || '';
-        document.getElementById('vehicleCrew').value = vehicle.crew_count || 0;
-        document.getElementById('vehicleLocation').value = vehicle.location_id || '';
-        document.getElementById('vehicleNotes').value = vehicle.notes || '';
+        byId('vehicleModalTitle').textContent = 'Fahrzeug bearbeiten';
+        byId('vehicleId').value = vehicle.id;
+        byId('vehicleCallsign').value = vehicle.callsign;
+        byId('vehicleType').value = vehicle.vehicle_type || '';
+        byId('vehicleCrew').value = vehicle.crew_count || 0;
+        byId('vehicleLocation').value = vehicle.location_id || '';
+        byId('vehicleNotes').value = vehicle.notes || '';
     } else {
-        document.getElementById('vehicleModalTitle').textContent = 'Neues Fahrzeug';
+        byId('vehicleModalTitle').textContent = 'Neues Fahrzeug';
     }
     
-    document.getElementById('vehicleModal').classList.add('active');
+    setModalActive('vehicleModal', true);
 }
 
 function openLocationModal(location = null) {
-    const form = document.getElementById('locationForm');
+    const form = byId('locationForm');
     form.reset();
     
     if (location) {
-        document.getElementById('locationModalTitle').textContent = 'Standort bearbeiten';
-        document.getElementById('locationId').value = location.id;
-        document.getElementById('locationName').value = location.name;
-        document.getElementById('locationAddress').value = location.address;
+        byId('locationModalTitle').textContent = 'Standort bearbeiten';
+        byId('locationId').value = location.id;
+        byId('locationName').value = location.name;
+        byId('locationAddress').value = location.address;
     } else {
-        document.getElementById('locationModalTitle').textContent = 'Neuer Standort';
+        byId('locationModalTitle').textContent = 'Neuer Standort';
     }
     
-    document.getElementById('locationModal').classList.add('active');
+    setModalActive('locationModal', true);
 }
 
 function openJournalModal() {
-    if (!currentOperation) {
+    if (!state.currentOperation) {
         alert('Bitte zuerst eine Einsatzlage erstellen!');
         return;
     }
     
-    const form = document.getElementById('journalForm');
+    const form = byId('journalForm');
     form.reset();
     
-    // Load assignments into select
-    const assignmentSelect = document.getElementById('journalAssignment');
-    assignmentSelect.innerHTML = '<option value="">Allgemein</option>';
-    assignments.forEach(assignment => {
-        const option = document.createElement('option');
-        option.value = assignment.id;
-        option.textContent = `${getSequentialNumber(assignment.number)} - ${assignment.title}`;
-        assignmentSelect.appendChild(option);
-    });
+    fillSelectFromItems(
+        'journalAssignment',
+        state.assignments,
+        (assignment) => ({
+            value: assignment.id,
+            text: `${getSequentialNumber(assignment.number)} - ${assignment.title}`
+        }),
+        '<option value="">Allgemein</option>'
+    );
     
-    document.getElementById('journalModal').classList.add('active');
+    setModalActive('journalModal', true);
 }
 
 // Form Handlers
@@ -244,12 +242,12 @@ async function handleOperationSubmit(e) {
     e.preventDefault();
     
     const data = {
-        title: document.getElementById('operationTitle').value,
-        description: document.getElementById('operationDescription').value
+        title: byId('operationTitle').value,
+        description: byId('operationDescription').value
     };
     
-    currentOperation = await api.createOperation(data);
-    document.getElementById('operationModal').classList.remove('active');
+    appState.setCurrentOperation(await api.createOperation(data));
+    setModalActive('operationModal', false);
     updateOperationDisplay();
     await loadData();
 }
@@ -257,13 +255,13 @@ async function handleOperationSubmit(e) {
 async function handleAssignmentSubmit(e) {
     e.preventDefault();
     
-    const assignmentId = document.getElementById('assignmentId').value;
+    const assignmentId = byId('assignmentId').value;
     const data = {
-        title: document.getElementById('assignmentTitle').value,
-        location_address: document.getElementById('assignmentLocation').value,
-        description: document.getElementById('assignmentDescription').value,
-        latitude: document.getElementById('assignmentLat').value || null,
-        longitude: document.getElementById('assignmentLon').value || null
+        title: byId('assignmentTitle').value,
+        location_address: byId('assignmentLocation').value,
+        description: byId('assignmentDescription').value,
+        latitude: byId('assignmentLat').value || null,
+        longitude: byId('assignmentLon').value || null
     };
     
     if (assignmentId) {
@@ -272,20 +270,20 @@ async function handleAssignmentSubmit(e) {
         await api.createAssignment(data);
     }
     
-    document.getElementById('assignmentModal').classList.remove('active');
+    setModalActive('assignmentModal', false);
     await loadData();
 }
 
 async function handleVehicleSubmit(e) {
     e.preventDefault();
     
-    const vehicleId = document.getElementById('vehicleId').value;
+    const vehicleId = byId('vehicleId').value;
     const data = {
-        callsign: document.getElementById('vehicleCallsign').value,
-        vehicle_type: document.getElementById('vehicleType').value,
-        crew_count: parseInt(document.getElementById('vehicleCrew').value) || 0,
-        location_id: document.getElementById('vehicleLocation').value || null,
-        notes: document.getElementById('vehicleNotes').value
+        callsign: byId('vehicleCallsign').value,
+        vehicle_type: byId('vehicleType').value,
+        crew_count: parseInt(byId('vehicleCrew').value) || 0,
+        location_id: byId('vehicleLocation').value || null,
+        notes: byId('vehicleNotes').value
     };
     
     if (vehicleId) {
@@ -294,17 +292,17 @@ async function handleVehicleSubmit(e) {
         await api.createVehicle(data);
     }
     
-    document.getElementById('vehicleModal').classList.remove('active');
+    setModalActive('vehicleModal', false);
     await loadData();
 }
 
 async function handleLocationSubmit(e) {
     e.preventDefault();
     
-    const locationId = document.getElementById('locationId').value;
+    const locationId = byId('locationId').value;
     const data = {
-        name: document.getElementById('locationName').value,
-        address: document.getElementById('locationAddress').value
+        name: byId('locationName').value,
+        address: byId('locationAddress').value
     };
     
     if (locationId) {
@@ -313,7 +311,7 @@ async function handleLocationSubmit(e) {
         await api.createLocation(data);
     }
     
-    document.getElementById('locationModal').classList.remove('active');
+    setModalActive('locationModal', false);
     await loadData();
 }
 
@@ -322,22 +320,21 @@ async function handleJournalSubmit(e) {
     
     const data = {
         entry_type: document.getElementById('journalType').value,
-        assignment_id: document.getElementById('journalAssignment').value || null,
-        content: document.getElementById('journalContent').value
+        assignment_id: byId('journalAssignment').value || null,
+        content: byId('journalContent').value
     };
     
     await api.createJournalEntry(data);
-    document.getElementById('journalModal').classList.remove('active');
+    setModalActive('journalModal', false);
     await renderJournal();
 }
 
 async function handleCloseOperation() {
-    if (!currentOperation) return;
+    if (!state.currentOperation) return;
     
     if (confirm('Möchten Sie die Einsatzlage wirklich schließen? Danach sind keine Änderungen mehr möglich.')) {
-        await api.closeOperation(currentOperation.id);
-        currentOperation = null;
-        assignments = [];
+        await api.closeOperation(state.currentOperation.id);
+        appState.clearOperationData();
         updateOperationDisplay();
         await loadData();
     }
@@ -345,27 +342,27 @@ async function handleCloseOperation() {
 
 // Render Functions
 function renderAssignments() {
-    const container = document.getElementById('assignmentsList');
+    const container = byId('assignmentsList');
     
-    if (assignments.length === 0) {
-        container.innerHTML = '<p>Keine Aufträge vorhanden.</p>';
+    if (state.assignments.length === 0) {
+        renderEmptyState('assignmentsList', 'Keine Aufträge vorhanden.');
         return;
     }
     
     container.innerHTML = '';
-    assignments.forEach(assignment => {
+    state.assignments.forEach(assignment => {
         const item = document.createElement('div');
         item.className = `list-item status-${assignment.status}`;
         
         const vehiclesHtml = assignment.vehicles.length > 0 
-            ? `<div class="assignment-vehicles">Fahrzeuge: ${assignment.vehicles.join(', ')}</div>`
+            ? `<div class="assignment-vehicles">Fahrzeuge: ${assignment.vehicles.map((v) => e(v)).join(', ')}</div>`
             : '';
         
         item.innerHTML = `
             <div class="list-item-header">
                 <div>
-                    <div class="list-item-number">${getSequentialNumber(assignment.number)}</div>
-                    <div class="list-item-title">${assignment.title}</div>
+                    <div class="list-item-number">${e(getSequentialNumber(assignment.number))}</div>
+                    <div class="list-item-title">${e(assignment.title)}</div>
                 </div>
                 <div class="list-item-actions">
                     ${assignment.status !== 'completed' ? 
@@ -374,8 +371,8 @@ function renderAssignments() {
                     <button class="btn btn-small btn-secondary" onclick="manageVehicles(${assignment.id})">Fahrzeuge</button>
                 </div>
             </div>
-            ${assignment.location_address ? `<div>${assignment.location_address}</div>` : ''}
-            ${assignment.description ? `<div>${assignment.description}</div>` : ''}
+            ${assignment.location_address ? `<div>${e(assignment.location_address)}</div>` : ''}
+            ${assignment.description ? `<div>${e(assignment.description)}</div>` : ''}
             ${vehiclesHtml}
         `;
         
@@ -384,31 +381,31 @@ function renderAssignments() {
 }
 
 function renderVehicles() {
-    const container = document.getElementById('vehiclesList');
+    const container = byId('vehiclesList');
     
-    if (vehicles.length === 0) {
-        container.innerHTML = '<p>Keine Fahrzeuge vorhanden.</p>';
+    if (state.vehicles.length === 0) {
+        renderEmptyState('vehiclesList', 'Keine Fahrzeuge vorhanden.');
         return;
     }
     
     container.innerHTML = '';
-    vehicles.forEach(vehicle => {
+    state.vehicles.forEach(vehicle => {
         const item = document.createElement('div');
         item.className = 'list-item';
         
         item.innerHTML = `
             <div class="list-item-header">
                 <div>
-                    <div class="list-item-title">${vehicle.callsign}</div>
-                    <div>${vehicle.vehicle_type || ''} - Besatzung: ${vehicle.crew_count}</div>
-                    ${vehicle.location_name ? `<div>Standort: ${vehicle.location_name}</div>` : ''}
+                    <div class="list-item-title">${e(vehicle.callsign)}</div>
+                    <div>${e(vehicle.vehicle_type || '')} - Besatzung: ${e(vehicle.crew_count)}</div>
+                    ${vehicle.location_name ? `<div>Standort: ${e(vehicle.location_name)}</div>` : ''}
                 </div>
                 <div class="list-item-actions">
                     <button class="btn btn-small btn-secondary" onclick="editVehicle(${vehicle.id})">Bearbeiten</button>
                     <button class="btn btn-small btn-danger" onclick="deleteVehicle(${vehicle.id})">Löschen</button>
                 </div>
             </div>
-            ${vehicle.notes ? `<div>${vehicle.notes}</div>` : ''}
+            ${vehicle.notes ? `<div>${e(vehicle.notes)}</div>` : ''}
         `;
         
         container.appendChild(item);
@@ -416,23 +413,23 @@ function renderVehicles() {
 }
 
 function renderLocations() {
-    const container = document.getElementById('locationsList');
+    const container = byId('locationsList');
     
-    if (locations.length === 0) {
-        container.innerHTML = '<p>Keine Standorte vorhanden.</p>';
+    if (state.locations.length === 0) {
+        renderEmptyState('locationsList', 'Keine Standorte vorhanden.');
         return;
     }
     
     container.innerHTML = '';
-    locations.forEach(location => {
+    state.locations.forEach(location => {
         const item = document.createElement('div');
         item.className = 'list-item';
         
         item.innerHTML = `
             <div class="list-item-header">
                 <div>
-                    <div class="list-item-title">${location.name}</div>
-                    <div>${location.address}</div>
+                    <div class="list-item-title">${e(location.name)}</div>
+                    <div>${e(location.address)}</div>
                     ${location.latitude && location.longitude ? 
                         `<div>GPS: ${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}</div>` : ''}
                 </div>
@@ -448,16 +445,16 @@ function renderLocations() {
 }
 
 async function renderJournal() {
-    if (!currentOperation) {
-        document.getElementById('journalList').innerHTML = '<p>Keine aktive Einsatzlage.</p>';
+    if (!state.currentOperation) {
+        renderEmptyState('journalList', 'Keine aktive Einsatzlage.');
         return;
     }
     
-    const entries = await api.getJournalEntries(currentOperation.id);
-    const container = document.getElementById('journalList');
+    const entries = await api.getJournalEntries(state.currentOperation.id);
+    const container = byId('journalList');
     
     if (entries.length === 0) {
-        container.innerHTML = '<p>Keine Einträge vorhanden.</p>';
+        renderEmptyState('journalList', 'Keine Einträge vorhanden.');
         return;
     }
     
@@ -469,10 +466,10 @@ async function renderJournal() {
         item.innerHTML = `
             <div class="journal-entry-header">
                 <div class="journal-entry-time">${formatDate(entry.timestamp)}</div>
-                <div class="journal-entry-type">${entry.entry_type}</div>
+                <div class="journal-entry-type">${e(entry.entry_type)}</div>
             </div>
             ${entry.assignment_number ? `<div><strong>Auftrag:</strong> ${getSequentialNumber(entry.assignment_number)}</div>` : ''}
-            <div class="journal-entry-content">${entry.content}</div>
+            <div class="journal-entry-content">${e(entry.content)}</div>
         `;
         
         container.appendChild(item);
@@ -481,7 +478,7 @@ async function renderJournal() {
 
 // Helper Functions
 async function editAssignment(id) {
-    const assignment = assignments.find(a => a.id === id);
+    const assignment = state.assignments.find(a => a.id === id);
     if (assignment) openAssignmentModal(assignment);
 }
 
@@ -493,10 +490,10 @@ async function completeAssignment(id) {
 }
 
 async function manageVehicles(assignmentId) {
-    const assignment = assignments.find(a => a.id === assignmentId);
+    const assignment = state.assignments.find(a => a.id === assignmentId);
     if (!assignment) return;
     
-    const availableVehicles = vehicles.filter(v => 
+    const availableVehicles = state.vehicles.filter(v =>
         !assignment.vehicles.includes(v.callsign)
     );
     
@@ -512,7 +509,7 @@ async function manageVehicles(assignmentId) {
         if (choice.toLowerCase().startsWith('remove')) {
             // Handle remove
             const callsign = choice.substring(7).trim();
-            const vehicle = vehicles.find(v => v.callsign === callsign);
+            const vehicle = state.vehicles.find(v => v.callsign === callsign);
             if (vehicle) {
                 await api.unassignVehicle(assignmentId, vehicle.id);
                 await loadData();
@@ -529,7 +526,7 @@ async function manageVehicles(assignmentId) {
 }
 
 async function editVehicle(id) {
-    const vehicle = vehicles.find(v => v.id === id);
+    const vehicle = state.vehicles.find(v => v.id === id);
     if (vehicle) openVehicleModal(vehicle);
 }
 
@@ -541,7 +538,7 @@ async function deleteVehicle(id) {
 }
 
 async function editLocation(id) {
-    const location = locations.find(l => l.id === id);
+    const location = state.locations.find(l => l.id === id);
     if (location) openLocationModal(location);
 }
 
@@ -554,12 +551,12 @@ async function deleteLocation(id) {
 
 // Configuration Modal Functions
 async function openVehiclesConfig() {
-    document.getElementById('vehiclesConfigModal').classList.add('active');
+    setModalActive('vehiclesConfigModal', true);
     await loadVehiclesConfig();
 }
 
 async function openLocationsConfig() {
-    document.getElementById('locationsConfigModal').classList.add('active');
+    setModalActive('locationsConfigModal', true);
     await loadLocationsConfig();
 }
 
