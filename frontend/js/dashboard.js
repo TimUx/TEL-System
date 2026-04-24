@@ -4,6 +4,14 @@ let dashboardData = {
     vehicles: [],
     operation: null
 };
+const { buildVehicleAssignmentOverview } = window.vehicleAssignmentUtils;
+const e = escapeHtml;
+let dashboardUpdateInFlight = false;
+let lastDashboardSignature = '';
+
+function byId(id) {
+    return document.getElementById(id);
+}
 
 document.addEventListener('DOMContentLoaded', async () => {
     await updateDashboard();
@@ -11,6 +19,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function updateDashboard() {
+    if (dashboardUpdateInFlight) return;
+    dashboardUpdateInFlight = true;
     try {
         // Get active operation
         dashboardData.operation = await api.getActiveOperation();
@@ -23,13 +33,25 @@ async function updateDashboard() {
         // Load data
         dashboardData.assignments = await api.getAssignments();
         dashboardData.vehicles = await api.getVehicles();
-        
+
+        const signature = JSON.stringify({
+            operation: dashboardData.operation?.id || null,
+            assignments: dashboardData.assignments.map((a) => [a.id, a.status, a.vehicles.length]),
+            vehicles: dashboardData.vehicles.map((v) => [v.id, v.location_id, v.crew_count])
+        });
+        if (signature === lastDashboardSignature) {
+            return;
+        }
+        lastDashboardSignature = signature;
+
         // Update displays
         updateStatistics();
         updateAssignmentsDisplay();
         updateVehiclesDisplay();
     } catch (error) {
         console.error('Error updating dashboard:', error);
+    } finally {
+        dashboardUpdateInFlight = false;
     }
 }
 
@@ -60,9 +82,9 @@ function updateStatistics() {
     });
     
     // Update display
-    document.getElementById('statsAssignments').textContent = totalAssignments;
-    document.getElementById('statsVehicles').textContent = assignedVehicles.size;
-    document.getElementById('statsPersonnel').textContent = totalPersonnel;
+    byId('statsAssignments').textContent = totalAssignments;
+    byId('statsVehicles').textContent = assignedVehicles.size;
+    byId('statsPersonnel').textContent = totalPersonnel;
 }
 
 function updateAssignmentsDisplay() {
@@ -78,7 +100,7 @@ function updateAssignmentsDisplay() {
 }
 
 function renderAssignmentGroup(containerId, assignments) {
-    const container = document.getElementById(containerId);
+    const container = byId(containerId);
     
     if (assignments.length === 0) {
         container.innerHTML = '<p style="color: #95a5a6; padding: 10px;">Keine Aufträge</p>';
@@ -91,12 +113,12 @@ function renderAssignmentGroup(containerId, assignments) {
         card.className = `assignment-card status-${assignment.status}`;
         
         card.innerHTML = `
-            <div class="assignment-number">${getSequentialNumber(assignment.number)}</div>
-            <div class="assignment-title">${assignment.title}</div>
+            <div class="assignment-number">${e(getSequentialNumber(assignment.number))}</div>
+            <div class="assignment-title">${e(assignment.title)}</div>
             ${assignment.location_address ? 
-                `<div class="assignment-location">${assignment.location_address}</div>` : ''}
+                `<div class="assignment-location">${e(assignment.location_address)}</div>` : ''}
             ${assignment.vehicles.length > 0 ? 
-                `<div class="assignment-vehicles">🚒 ${assignment.vehicles.join(', ')}</div>` : ''}
+                `<div class="assignment-vehicles">Fahrzeuge: ${assignment.vehicles.map((v) => e(v)).join(', ')}</div>` : ''}
         `;
         
         container.appendChild(card);
@@ -104,31 +126,10 @@ function renderAssignmentGroup(containerId, assignments) {
 }
 
 function updateVehiclesDisplay() {
-    // Get vehicles with active assignments and all their assignments
-    const activeVehicles = [];
-    const inactiveVehiclesByLocation = {};
-    
-    dashboardData.vehicles.forEach(vehicle => {
-        // Find all assignments for this vehicle (not just active ones)
-        const vehicleAssignments = dashboardData.assignments.filter(a => 
-            a.vehicles.includes(vehicle.callsign)
-        );
-        
-        const activeAssignments = vehicleAssignments.filter(a => a.status !== 'completed');
-        
-        if (activeAssignments.length > 0) {
-            activeVehicles.push({
-                vehicle: vehicle,
-                assignments: vehicleAssignments
-            });
-        } else {
-            const locationName = vehicle.location_name || 'Ohne Standort';
-            if (!inactiveVehiclesByLocation[locationName]) {
-                inactiveVehiclesByLocation[locationName] = [];
-            }
-            inactiveVehiclesByLocation[locationName].push(vehicle);
-        }
-    });
+    const { activeVehicles, inactiveVehiclesByLocation } = buildVehicleAssignmentOverview(
+        dashboardData.vehicles,
+        dashboardData.assignments
+    );
     
     // Render active vehicles
     renderActiveVehicles(activeVehicles);
@@ -138,7 +139,7 @@ function updateVehiclesDisplay() {
 }
 
 function renderActiveVehicles(vehicleData) {
-    const container = document.getElementById('activeVehicles');
+    const container = byId('activeVehicles');
     
     if (vehicleData.length === 0) {
         container.innerHTML = '<p style="color: #95a5a6; padding: 10px;">Keine Fahrzeuge im Einsatz</p>';
@@ -149,12 +150,11 @@ function renderActiveVehicles(vehicleData) {
     const gridContainer = document.createElement('div');
     gridContainer.className = 'vehicle-list-active';
     
-    vehicleData.forEach(({ vehicle, assignments }) => {
+    vehicleData.forEach(({ vehicle, assignments, activeAssignments }) => {
         const card = document.createElement('div');
         card.className = 'vehicle-card active';
         
         // Separate active and completed assignments
-        const activeAssignments = assignments.filter(a => a.status !== 'completed');
         const completedAssignments = assignments.filter(a => a.status === 'completed');
         
         // Build assignment numbers display
@@ -165,12 +165,12 @@ function renderActiveVehicles(vehicleData) {
             // Show active assignments first
             activeAssignments.forEach((a, index) => {
                 const isFirst = index === 0;
-                assignmentsHtml += `<span class="assignment-badge ${isFirst ? 'active' : 'queued'}">${getSequentialNumber(a.number)}</span>`;
+                assignmentsHtml += `<span class="assignment-badge ${isFirst ? 'active' : 'queued'}">${e(getSequentialNumber(a.number))}</span>`;
             });
             
             // Show completed assignments
             completedAssignments.forEach(a => {
-                assignmentsHtml += `<span class="assignment-badge completed">${getSequentialNumber(a.number)}</span>`;
+                assignmentsHtml += `<span class="assignment-badge completed">${e(getSequentialNumber(a.number))}</span>`;
             });
             
             assignmentsHtml += '</div>';
@@ -178,8 +178,8 @@ function renderActiveVehicles(vehicleData) {
         
         card.innerHTML = `
             <div class="vehicle-info">
-                <div class="vehicle-callsign">${vehicle.callsign}</div>
-                <div class="vehicle-type">${vehicle.vehicle_type || ''}</div>
+                <div class="vehicle-callsign">${e(vehicle.callsign)}</div>
+                <div class="vehicle-type">${e(vehicle.vehicle_type || '')}</div>
                 <div class="vehicle-crew">👥 ${vehicle.crew_count}</div>
             </div>
             ${assignmentsHtml}
@@ -193,7 +193,7 @@ function renderActiveVehicles(vehicleData) {
 }
 
 function renderVehiclesByLocation(vehiclesByLocation) {
-    const container = document.getElementById('vehiclesByLocation');
+    const container = byId('vehiclesByLocation');
     container.innerHTML = '';
     
     Object.entries(vehiclesByLocation).forEach(([locationName, vehicles]) => {
@@ -212,8 +212,8 @@ function renderVehiclesByLocation(vehiclesByLocation) {
             card.className = 'vehicle-card inactive';
             
             card.innerHTML = `
-                <div class="vehicle-callsign-small">${vehicle.callsign}</div>
-                <div class="vehicle-type-small">${vehicle.vehicle_type || ''}</div>
+                <div class="vehicle-callsign-small">${e(vehicle.callsign)}</div>
+                <div class="vehicle-type-small">${e(vehicle.vehicle_type || '')}</div>
                 <div class="vehicle-crew-small">👥 ${vehicle.crew_count}</div>
             `;
             

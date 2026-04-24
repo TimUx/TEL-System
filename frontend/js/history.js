@@ -1,7 +1,41 @@
 // History page functionality
+const HISTORY_TABLE_BODY_ID = 'historyTableBody';
+const EMPTY_HISTORY_ROW_HTML = '<tr><td colspan="6" style="text-align: center;">Keine Einsatzlagen vorhanden</td></tr>';
+const STATUS_HTML_BY_KEY = {
+    active: '<span class="status-badge active">Aktiv</span>',
+    default: '<span class="status-badge closed">Geschlossen</span>'
+};
+const e = escapeHtml;
+
 document.addEventListener('DOMContentLoaded', async () => {
     await loadHistory();
 });
+
+function getHistoryTableBody() {
+    return document.getElementById(HISTORY_TABLE_BODY_ID);
+}
+
+function createOperationRowHtml(operation) {
+    const statusBadge = operation.status === 'active'
+        ? STATUS_HTML_BY_KEY.active
+        : STATUS_HTML_BY_KEY.default;
+
+    return `
+        <td>${e(operation.number)}</td>
+        <td>${e(operation.title)}</td>
+        <td>${formatDate(operation.created_at)}</td>
+        <td>${operation.closed_at ? formatDate(operation.closed_at) : '-'}</td>
+        <td>${statusBadge}</td>
+        <td>
+            <button class="btn btn-small btn-secondary" onclick="exportOperation(${operation.id})">Export</button>
+            <button class="btn btn-small btn-secondary" onclick="viewOperation(${operation.id})">Anzeigen</button>
+        </td>
+    `;
+}
+
+function renderEmptyHistory(tbody) {
+    tbody.innerHTML = EMPTY_HISTORY_ROW_HTML;
+}
 
 async function loadHistory() {
     try {
@@ -13,33 +47,17 @@ async function loadHistory() {
 }
 
 function renderHistory(operations) {
-    const tbody = document.getElementById('historyTableBody');
-    
+    const tbody = getHistoryTableBody();
+
     if (operations.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Keine Einsatzlagen vorhanden</td></tr>';
+        renderEmptyHistory(tbody);
         return;
     }
-    
+
     tbody.innerHTML = '';
-    operations.forEach(operation => {
+    operations.forEach((operation) => {
         const row = document.createElement('tr');
-        
-        const statusBadge = operation.status === 'active' ? 
-            '<span class="status-badge active">Aktiv</span>' :
-            '<span class="status-badge closed">Geschlossen</span>';
-        
-        row.innerHTML = `
-            <td>${operation.number}</td>
-            <td>${operation.title}</td>
-            <td>${formatDate(operation.created_at)}</td>
-            <td>${operation.closed_at ? formatDate(operation.closed_at) : '-'}</td>
-            <td>${statusBadge}</td>
-            <td>
-                <button class="btn btn-small btn-secondary" onclick="exportOperation(${operation.id})">Export</button>
-                <button class="btn btn-small btn-secondary" onclick="viewOperation(${operation.id})">Anzeigen</button>
-            </td>
-        `;
-        
+        row.innerHTML = createOperationRowHtml(operation);
         tbody.appendChild(row);
     });
 }

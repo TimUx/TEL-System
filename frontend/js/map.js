@@ -6,6 +6,17 @@ let dashboardData = {
     vehicles: [],
     operation: null
 };
+const {
+    getVehicleAssignments,
+    buildVehicleAssignmentOverview
+} = window.vehicleAssignmentUtils;
+const e = escapeHtml;
+let mapUpdateInFlight = false;
+let lastMapSignature = '';
+
+function byId(id) {
+    return document.getElementById(id);
+}
 
 // Constants for vehicle marker positioning
 const VEHICLE_OFFSET_DISTANCE = 0.002; // Approximately 200 meters in degrees
@@ -25,7 +36,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else {
         console.warn('Leaflet library not loaded. Map display will be limited.');
         // Display message in map area
-        const mapDiv = document.getElementById('map');
+        const mapDiv = byId('map');
         if (mapDiv) {
             const messageDiv = document.createElement('div');
             messageDiv.style.cssText = 'display: flex; align-items: center; justify-content: center; height: 100%; background: #ecf0f1; color: #7f8c8d; font-size: 18px;';
@@ -40,6 +51,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function updateMap() {
+    if (mapUpdateInFlight) return;
+    mapUpdateInFlight = true;
     try {
         // Get active operation
         const operation = await api.getActiveOperation();
@@ -57,6 +70,15 @@ async function updateMap() {
         
         dashboardData.assignments = assignments;
         dashboardData.vehicles = vehicles;
+        const signature = JSON.stringify({
+            operation: dashboardData.operation?.id || null,
+            assignments: assignments.map((a) => [a.id, a.status, a.latitude, a.longitude, a.vehicles.length]),
+            vehicles: vehicles.map((v) => [v.id, v.location_id, v.callsign])
+        });
+        if (signature === lastMapSignature) {
+            return;
+        }
+        lastMapSignature = signature;
         
         // Only update map markers if Leaflet is available
         if (typeof L !== 'undefined' && map) {
@@ -94,29 +116,17 @@ async function updateMap() {
         updateSidebars();
     } catch (error) {
         console.error('Error updating map:', error);
+    } finally {
+        mapUpdateInFlight = false;
     }
 }
 
 async function getVehiclesWithAssignments(vehicles, assignments) {
-    const result = [];
-    
-    // For each vehicle, find its first active assignment
-    for (const vehicle of vehicles) {
-        const vehicleAssignments = assignments.filter(a => 
-            a.vehicles.includes(vehicle.callsign) && 
-            a.status !== 'completed'
-        );
-        
-        if (vehicleAssignments.length > 0) {
-            // Use first assignment (could be enhanced to use order)
-            result.push({
-                vehicle: vehicle,
-                assignment: vehicleAssignments[0]
-            });
-        }
-    }
-    
-    return result;
+    const { activeVehicles } = buildVehicleAssignmentOverview(vehicles, assignments);
+    return activeVehicles.map(({ vehicle, activeAssignments }) => ({
+        vehicle,
+        assignment: activeAssignments[0]
+    }));
 }
 
 function addAssignmentMarker(assignment) {
@@ -127,7 +137,7 @@ function addAssignmentMarker(assignment) {
     // Create custom icon
     const iconHtml = `
         <div class="assignment-marker ${assignment.status === 'completed' ? 'completed' : ''}">
-            ${getSequentialNumber(assignment.number)}
+            ${e(getSequentialNumber(assignment.number))}
         </div>
     `;
     
@@ -143,11 +153,11 @@ function addAssignmentMarker(assignment) {
     
     // Tooltip content for hover (instead of popup)
     const tooltipContent = `
-        <strong>Auftrag ${getSequentialNumber(assignment.number)}</strong><br>
-        ${assignment.title}<br>
-        ${assignment.location_address || ''}<br>
+        <strong>Auftrag ${e(getSequentialNumber(assignment.number))}</strong><br>
+        ${e(assignment.title)}<br>
+        ${e(assignment.location_address || '')}<br>
         Status: ${assignment.status === 'open' ? 'Offen' : assignment.status === 'assigned' ? 'Zugewiesen' : 'Abgeschlossen'}<br>
-        ${assignment.vehicles.length > 0 ? `Fahrzeuge: ${assignment.vehicles.join(', ')}` : 'Keine Fahrzeuge zugewiesen'}
+        ${assignment.vehicles.length > 0 ? `Fahrzeuge: ${assignment.vehicles.map((v) => e(v)).join(', ')}` : 'Keine Fahrzeuge zugewiesen'}
     `;
     
     // Bind permanent tooltip that shows on hover
@@ -182,14 +192,14 @@ function addVehicleMarker(vehicle, assignment, offsetIndex) {
     if (symbolPath) {
         iconHtml = `
             <div class="vehicle-marker-tactical">
-                <img src="${symbolPath}" alt="${vehicle.vehicle_type}" class="tactical-symbol">
-                <div class="vehicle-marker-label">${vehicle.callsign}</div>
+                <img src="${symbolPath}" alt="${e(vehicle.vehicle_type)}" class="tactical-symbol">
+                <div class="vehicle-marker-label">${e(vehicle.callsign)}</div>
             </div>
         `;
     } else {
         iconHtml = `
             <div class="vehicle-marker">
-                ${vehicle.callsign}
+                ${e(vehicle.callsign)}
             </div>
         `;
     }
@@ -206,15 +216,13 @@ function addVehicleMarker(vehicle, assignment, offsetIndex) {
     }).addTo(map);
     
     // Get all assignments for this vehicle
-    const vehicleAssignments = dashboardData.assignments.filter(a => 
-        a.vehicles.includes(vehicle.callsign)
-    );
-    const assignmentNumbers = vehicleAssignments.map(a => getSequentialNumber(a.number)).join(', ');
+    const vehicleAssignments = getVehicleAssignments(vehicle, dashboardData.assignments);
+    const assignmentNumbers = vehicleAssignments.map(a => e(getSequentialNumber(a.number))).join(', ');
     
     // Tooltip content for hover
     const tooltipContent = `
-        <strong>${vehicle.callsign}</strong><br>
-        Typ: ${vehicle.vehicle_type || 'N/A'}<br>
+        <strong>${e(vehicle.callsign)}</strong><br>
+        Typ: ${e(vehicle.vehicle_type || 'N/A')}<br>
         Besatzung: ${vehicle.crew_count}<br>
         ${vehicleAssignments.length > 0 ? `Aufträge: ${assignmentNumbers}` : 'Kein Auftrag'}
     `;
@@ -245,30 +253,17 @@ function updateSidebars() {
 }
 
 function updateDeployedVehicles() {
-    const container = document.getElementById('deployedVehicles');
+    const container = byId('deployedVehicles');
     
     if (!dashboardData.operation) {
         container.innerHTML = '<p style="color: #95a5a6; padding: 10px; font-size: 12px;">Keine aktive Einsatzlage</p>';
         return;
     }
     
-    // Get vehicles with active assignments
-    const activeVehicles = [];
-    
-    dashboardData.vehicles.forEach(vehicle => {
-        const vehicleAssignments = dashboardData.assignments.filter(a => 
-            a.vehicles.includes(vehicle.callsign)
-        );
-        
-        const activeAssignments = vehicleAssignments.filter(a => a.status !== 'completed');
-        
-        if (activeAssignments.length > 0) {
-            activeVehicles.push({
-                vehicle: vehicle,
-                assignments: vehicleAssignments
-            });
-        }
-    });
+    const { activeVehicles } = buildVehicleAssignmentOverview(
+        dashboardData.vehicles,
+        dashboardData.assignments
+    );
     
     if (activeVehicles.length === 0) {
         container.innerHTML = '<p style="color: #95a5a6; padding: 10px; font-size: 12px;">Keine Fahrzeuge im Einsatz</p>';
@@ -285,14 +280,14 @@ function updateDeployedVehicles() {
         if (assignments.length > 0) {
             assignmentsHtml = '<div class="sidebar-vehicle-assignments">';
             assignments.forEach(a => {
-                assignmentsHtml += `<span class="sidebar-assignment-badge">${getSequentialNumber(a.number)}</span>`;
+                assignmentsHtml += `<span class="sidebar-assignment-badge">${e(getSequentialNumber(a.number))}</span>`;
             });
             assignmentsHtml += '</div>';
         }
         
         card.innerHTML = `
-            <div class="sidebar-vehicle-callsign">${vehicle.callsign}</div>
-            <div class="sidebar-vehicle-type">${vehicle.vehicle_type || ''}</div>
+            <div class="sidebar-vehicle-callsign">${e(vehicle.callsign)}</div>
+            <div class="sidebar-vehicle-type">${e(vehicle.vehicle_type || '')}</div>
             <div class="sidebar-vehicle-crew">👥 ${vehicle.crew_count}</div>
             ${assignmentsHtml}
         `;
@@ -302,31 +297,17 @@ function updateDeployedVehicles() {
 }
 
 function updateAvailableVehicles() {
-    const container = document.getElementById('availableVehicles');
+    const container = byId('availableVehicles');
     
     if (!dashboardData.operation) {
         container.innerHTML = '<p style="color: #95a5a6; padding: 10px; font-size: 12px;">Keine aktive Einsatzlage</p>';
         return;
     }
     
-    // Group inactive vehicles by location
-    const vehiclesByLocation = {};
-    
-    dashboardData.vehicles.forEach(vehicle => {
-        const vehicleAssignments = dashboardData.assignments.filter(a => 
-            a.vehicles.includes(vehicle.callsign)
-        );
-        
-        const activeAssignments = vehicleAssignments.filter(a => a.status !== 'completed');
-        
-        if (activeAssignments.length === 0) {
-            const locationName = vehicle.location_name || 'Ohne Standort';
-            if (!vehiclesByLocation[locationName]) {
-                vehiclesByLocation[locationName] = [];
-            }
-            vehiclesByLocation[locationName].push(vehicle);
-        }
-    });
+    const { inactiveVehiclesByLocation: vehiclesByLocation } = buildVehicleAssignmentOverview(
+        dashboardData.vehicles,
+        dashboardData.assignments
+    );
     
     if (Object.keys(vehiclesByLocation).length === 0) {
         container.innerHTML = '<p style="color: #95a5a6; padding: 10px; font-size: 12px;">Alle Fahrzeuge im Einsatz</p>';
@@ -348,8 +329,8 @@ function updateAvailableVehicles() {
             card.className = 'sidebar-vehicle-card inactive';
             
             card.innerHTML = `
-                <div class="sidebar-vehicle-callsign">${vehicle.callsign}</div>
-                <div class="sidebar-vehicle-type inactive-text">${vehicle.vehicle_type || ''}</div>
+                <div class="sidebar-vehicle-callsign">${e(vehicle.callsign)}</div>
+                <div class="sidebar-vehicle-type inactive-text">${e(vehicle.vehicle_type || '')}</div>
                 <div class="sidebar-vehicle-crew inactive-text">👥 ${vehicle.crew_count}</div>
             `;
             
