@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from functools import wraps
 import os
+from api_utils import api_error
 
 bp = Blueprint('api_external', __name__, url_prefix='/api/external')
 
@@ -9,10 +10,12 @@ def require_api_key(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         api_key = request.headers.get('X-API-Key')
-        expected_key = os.environ.get('API_KEY', 'change-this-in-production')
+        expected_key = os.environ.get('API_KEY')
+        if not expected_key:
+            return api_error('External API key is not configured', 503, 'service_unavailable')
         
         if not api_key or api_key != expected_key:
-            return jsonify({'error': 'Invalid or missing API key'}), 401
+            return api_error('Invalid or missing API key', 401, 'unauthorized')
         
         return f(*args, **kwargs)
     return decorated_function

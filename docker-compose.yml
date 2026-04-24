@@ -24,6 +24,9 @@ services:
       FLASK_APP: app.py
       FLASK_ENV: development
       SECRET_KEY: change-this-in-production
+      API_KEY: change-this-in-production
+      INTERNAL_API_KEY: change-this-in-production
+      CORS_ORIGINS: http://localhost,http://localhost:5000
     volumes:
       - ./backend:/app
       - ./frontend:/app/static

@@ -1,22 +1,29 @@
 from flask import Blueprint, request, jsonify
 from app import db
 from models import Vehicle
+from api_utils import parse_json_body, parse_pagination, require_internal_api_key, get_or_api_404
 
 bp = Blueprint('vehicles', __name__, url_prefix='/api/vehicles')
 
 @bp.route('/', methods=['GET'])
 def get_vehicles():
     """Get all vehicles"""
-    vehicles = Vehicle.query.all()
+    limit, offset, error = parse_pagination()
+    if error:
+        return error
+    vehicles = Vehicle.query.limit(limit).offset(offset).all()
     return jsonify([v.to_dict() for v in vehicles])
 
 @bp.route('/', methods=['POST'])
+@require_internal_api_key
 def create_vehicle():
     """Create a new vehicle"""
-    data = request.json
+    data, error = parse_json_body(required_fields=['callsign'])
+    if error:
+        return error
     
     vehicle = Vehicle(
-        callsign=data.get('callsign'),
+        callsign=data['callsign'],
         vehicle_type=data.get('vehicle_type'),
         crew_count=data.get('crew_count', 0),
         location_id=data.get('location_id'),
@@ -31,14 +38,21 @@ def create_vehicle():
 @bp.route('/<int:vehicle_id>', methods=['GET'])
 def get_vehicle(vehicle_id):
     """Get a single vehicle"""
-    vehicle = Vehicle.query.get_or_404(vehicle_id)
+    vehicle, error = get_or_api_404(Vehicle, vehicle_id, 'vehicle')
+    if error:
+        return error
     return jsonify(vehicle.to_dict())
 
 @bp.route('/<int:vehicle_id>', methods=['PUT'])
+@require_internal_api_key
 def update_vehicle(vehicle_id):
     """Update a vehicle"""
-    vehicle = Vehicle.query.get_or_404(vehicle_id)
-    data = request.json
+    vehicle, error = get_or_api_404(Vehicle, vehicle_id, 'vehicle')
+    if error:
+        return error
+    data, error = parse_json_body()
+    if error:
+        return error
     
     if 'callsign' in data:
         vehicle.callsign = data['callsign']
@@ -55,9 +69,12 @@ def update_vehicle(vehicle_id):
     return jsonify(vehicle.to_dict())
 
 @bp.route('/<int:vehicle_id>', methods=['DELETE'])
+@require_internal_api_key
 def delete_vehicle(vehicle_id):
     """Delete a vehicle"""
-    vehicle = Vehicle.query.get_or_404(vehicle_id)
+    vehicle, error = get_or_api_404(Vehicle, vehicle_id, 'vehicle')
+    if error:
+        return error
     db.session.delete(vehicle)
     db.session.commit()
     return jsonify({'message': 'Vehicle deleted'}), 200
@@ -65,7 +82,10 @@ def delete_vehicle(vehicle_id):
 @bp.route('/by-location', methods=['GET'])
 def get_vehicles_by_location():
     """Get vehicles grouped by location"""
-    vehicles = Vehicle.query.all()
+    limit, offset, error = parse_pagination()
+    if error:
+        return error
+    vehicles = Vehicle.query.limit(limit).offset(offset).all()
     result = {}
     
     for vehicle in vehicles:
