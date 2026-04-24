@@ -260,6 +260,35 @@ X-API-Key: your-api-key
 
 Weitere API-Endpunkte siehe Backend-Code in `/backend/routes/`
 
+### API Error Schema
+
+Fehlerantworten der API folgen einem einheitlichen JSON-Format:
+
+```json
+{
+  "error": {
+    "code": "validation_error",
+    "message": "Missing required fields",
+    "details": {
+      "missing_fields": ["title"]
+    }
+  }
+}
+```
+
+Hinweise:
+- `error.code`: maschinenlesbarer Fehlercode (stabil für Integrationen)
+- `error.message`: menschenlesbare Kurzbeschreibung
+- `error.details`: optionale Zusatzdaten (z. B. fehlende Felder)
+
+Typische Status-/Code-Kombinationen:
+- `400` + `validation_error`, `invalid_json`, `invalid_pagination`
+- `401` + `unauthorized`
+- `404` + `not_found`
+- `409` + `*_number_conflict`
+- `500` + `*_create_failed`
+- `503` + `service_unavailable`
+
 ## Entwicklung
 
 ### Lokale Entwicklung
@@ -282,6 +311,56 @@ python -m http.server 8080
 
 Die Datenbank wird automatisch beim ersten Start initialisiert. 
 Persistente Daten werden im Docker Volume `postgres_data` gespeichert.
+
+## Test-Suite
+
+Die Test-Suite deckt kritische Funktionen auf drei Ebenen ab:
+
+- **Unit-Tests**: isolierte Logik (z. B. Fehlerformat, Nummern-Services)
+- **Integration-Tests**: API-Routen + Datenbankverhalten (CRUD, Validierung, Auth, Versionierung)
+- **E2E-Tests**: vollständiger HTTP-Flow über laufenden Flask-Server (`/api/v1/*`)
+
+### Kritische User-Flows (abgedeckt)
+
+- Einsatzlage erstellen, aktualisieren, schließen
+- Auftrag erstellen, bearbeiten, abschließen
+- Fahrzeug einem Auftrag zuweisen/entfernen
+- Standort-/Fahrzeugverwaltung inklusive Gruppierung nach Standort
+- Einsatztagebuch erstellen, ändern, löschen
+- Settings speichern/lesen
+- Externe API-Erstellung von Aufträgen mit API-Key
+- Versionierte API-Aliase unter `/api/v1/*`
+
+### Tests lokal ausführen
+
+Im Projekt-Root:
+
+```bash
+pip install -r backend/requirements.txt
+pytest -q
+```
+
+Nur einzelne Ebenen:
+
+```bash
+pytest -q -m unit
+pytest -q -m integration
+pytest -q -m e2e
+```
+
+Mit Coverage:
+
+```bash
+pytest --cov=backend --cov-report=term-missing
+```
+
+### Tests in CI
+
+Eine GitHub-Actions-Pipeline ist enthalten:
+
+- Datei: `.github/workflows/tests.yml`
+- Trigger: Push + Pull Request
+- Ablauf: Dependencies installieren, anschließend `pytest -q` ausführen
 
 ## Architektur
 
@@ -319,6 +398,16 @@ Wichtige Punkte:
 - Verwenden Sie HTTPS für Produktionsumgebungen
 - Richten Sie regelmäßige Backups ein
 - Überwachen Sie die Logs
+
+## Änderungsnotizen
+
+### API-Kompatibilität
+
+- Die bestehenden Endpunkte unter `/api/*` bleiben weiterhin verfügbar.
+- Zusätzlich sind versionierte Alias-Endpunkte unter `/api/v1/*` verfügbar.
+- Das neue Fehlerformat ist für API-Clients **non-breaking**:
+  - HTTP-Statuscodes bleiben erhalten.
+  - Fehlerdetails sind konsistenter strukturiert über `error.code`, `error.message`, `error.details`.
 
 ## Lizenz
 
