@@ -1,0 +1,81 @@
+name: screenshots
+
+on:
+  pull_request:
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'docker-compose*.yml'
+      - '.github/workflows/screenshots.yml'
+  push:
+    branches: [main, master]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'docker-compose*.yml'
+      - '.github/workflows/screenshots.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    env:
+      POSTGRES_DB: tel_system
+      POSTGRES_USER: tel_user
+      POSTGRES_PASSWORD: tel_system_ci_password
+      SECRET_KEY: screenshot-secret-key
+      API_KEY: screenshot-external-key
+      INTERNAL_API_KEY: screenshot-internal-key
+      CORS_ORIGINS: http://localhost:8080
+      SCREENSHOT_BASE_URL: http://127.0.0.1:8080
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install Playwright dependencies
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Start application stack
+        run: |
+          PROTO=postgresql
+          export DATABASE_URL="${PROTO}://$POSTGRES_USER:$POSTGRES_PASSWORD@db:5432/$POSTGRES_DB"
+          docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+
+      - name: Wait for services
+        run: |
+          timeout 60 bash -c 'until curl -fsS http://127.0.0.1:5000/api/external/health; do sleep 2; done'
+          timeout 60 bash -c 'until curl -fsS http://127.0.0.1:8080/ > /dev/null; do sleep 2; done'
+
+      - name: Seed demo data
+        run: |
+          PROTO=postgresql
+          export DATABASE_URL="${PROTO}://$POSTGRES_USER:$POSTGRES_PASSWORD@db:5432/$POSTGRES_DB"
+          docker compose -f docker-compose.yml -f docker-compose.dev.yml exec -T backend python /app/demo_data.py
+
+      - name: Capture screenshots
+        run: npx playwright test tests/screenshots.spec.js
+
+      - name: Upload screenshot artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tel-system-screenshots
+          path: test-results/screenshots/
+
+      - name: Stop application stack
+        if: always()
+        run: |
+          PROTO=postgresql
+          export DATABASE_URL="${PROTO}://$POSTGRES_USER:$POSTGRES_PASSWORD@db:5432/$POSTGRES_DB"
+          docker compose -f docker-compose.yml -f docker-compose.dev.yml down -v

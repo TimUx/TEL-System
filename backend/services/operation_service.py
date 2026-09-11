@@ -1,10 +1,13 @@
-from datetime import datetime
+from datetime import datetime, timezone
+
 from sqlalchemy import desc
+
 from models import Operation
 
 
+
 def next_operation_number():
-    current_year = datetime.utcnow().year
+    current_year = datetime.now(timezone.utc).year
     last_operation = Operation.query.filter(
         Operation.number.like(f'{current_year}-%')
     ).order_by(desc(Operation.number)).first()

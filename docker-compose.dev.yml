@@ -1,0 +1,13 @@
+services:
+  backend:
+    environment:
+      FLASK_ENV: development
+    volumes:
+      - ./backend:/app
+      - ./frontend:/app/static
+      - uploads:/app/uploads
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile

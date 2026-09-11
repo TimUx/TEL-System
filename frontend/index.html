@@ -5,21 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TEL - Einsatzkoordination</title>
     <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 </head>
 <body>
     <div class="container">
         <header>
             <h1>TEL</h1>
             <div class="header-actions">
-                <button id="newOperationBtn" class="btn btn-primary">Neue Einsatzlage</button>
+                <button id="newOperationBtn" class="btn btn-primary" data-testid="new-operation">Neue Einsatzlage</button>
                 <button id="openMapBtn" class="btn btn-secondary" style="display: none;">Lagekarte öffnen</button>
                 <button id="openDashboardBtn" class="btn btn-secondary" style="display: none;">Dashboard öffnen</button>
                 <button id="closeOperationBtn" class="btn btn-danger" style="display: none;">Lage schließen</button>
                 <div class="dropdown">
-                    <button id="settingsMenuBtn" class="btn btn-secondary">
-                        ⚙️ Einstellungen
-                    </button>
+                    <button id="settingsMenuBtn" class="btn btn-secondary">⚙️ Einstellungen</button>
                     <div id="settingsDropdown" class="dropdown-content">
                         <button id="vehiclesConfigBtn" class="dropdown-item">Fahrzeuge</button>
                         <button id="locationsConfigBtn" class="dropdown-item">Standorte</button>
@@ -30,43 +28,53 @@
             </div>
         </header>
 
+        <div id="globalError" class="error-banner" hidden></div>
+
         <div class="main-content">
-            <!-- Operation Info -->
-            <div id="operationInfo" class="operation-info" style="display: none;">
-                <h2>Aktuelle Einsatzlage</h2>
+            <div id="operationInfo" class="operation-info" style="display: none;" data-testid="operation-info">
+                <h2>Aktive Einsatzlage</h2>
                 <div id="operationDetails"></div>
             </div>
 
-            <!-- Tabs -->
+            <section class="resource-overview" data-testid="resource-overview">
+                <article class="overview-card">
+                    <h3>Verfügbar</h3>
+                    <div id="availableVehicleOverview" class="overview-list"></div>
+                </article>
+                <article class="overview-card overview-card-active">
+                    <h3>Im Einsatz</h3>
+                    <div id="deployedVehicleOverview" class="overview-list"></div>
+                </article>
+                <article class="overview-card overview-card-warning">
+                    <h3>Nicht verfügbar</h3>
+                    <div id="unavailableVehicleOverview" class="overview-list"></div>
+                </article>
+            </section>
+
             <div class="tabs">
                 <button class="tab-btn active" data-tab="assignments">Aufträge</button>
                 <button class="tab-btn" data-tab="journal">Einsatztagebuch</button>
             </div>
 
-            <!-- Tab Content -->
             <div class="tab-content">
-                <!-- Assignments Tab -->
                 <div id="assignments-tab" class="tab-pane active">
                     <div class="tab-header">
                         <h2>Aufträge</h2>
-                        <button id="newAssignmentBtn" class="btn btn-primary">Neuer Auftrag</button>
+                        <button id="newAssignmentBtn" class="btn btn-primary" data-testid="new-assignment">Neuer Auftrag</button>
                     </div>
-                    <div id="assignmentsList" class="list-container"></div>
+                    <div id="assignmentsList" class="list-container" data-testid="assignments-list"></div>
                 </div>
 
-                <!-- Journal Tab -->
                 <div id="journal-tab" class="tab-pane">
                     <div class="tab-header">
                         <h2>Einsatztagebuch</h2>
                         <button id="newJournalEntryBtn" class="btn btn-primary">Neuer Eintrag</button>
                     </div>
-                    <div id="journalList" class="list-container"></div>
+                    <div id="journalList" class="list-container" data-testid="journal-list"></div>
                 </div>
             </div>
         </div>
     </div>
-
-    <!-- Modals -->
 
     <div id="operationModal" class="modal">
         <div class="modal-content">
@@ -74,11 +82,11 @@
             <h2>Neue Einsatzlage</h2>
             <form id="operationForm">
                 <div class="form-group">
-                    <label>Titel *</label>
+                    <label for="operationTitle">Titel *</label>
                     <input type="text" id="operationTitle" required>
                 </div>
                 <div class="form-group">
-                    <label>Beschreibung</label>
+                    <label for="operationDescription">Beschreibung</label>
                     <textarea id="operationDescription" rows="4"></textarea>
                 </div>
                 <button type="submit" class="btn btn-primary">Erstellen</button>
@@ -92,15 +100,24 @@
             <h2 id="assignmentModalTitle">Neuer Auftrag</h2>
             <form id="assignmentForm">
                 <div class="form-group">
-                    <label>Einsatzstichwort *</label>
+                    <label for="assignmentTitle">Einsatzstichwort *</label>
                     <input type="text" id="assignmentTitle" required>
                 </div>
                 <div class="form-group">
-                    <label>Einsatzort</label>
+                    <label for="assignmentStatus">Status</label>
+                    <select id="assignmentStatus">
+                        <option value="open">Offen</option>
+                        <option value="assigned">Zugewiesen</option>
+                        <option value="in_progress">In Bearbeitung</option>
+                        <option value="completed">Abgeschlossen</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="assignmentLocation">Einsatzort</label>
                     <input type="text" id="assignmentLocation">
                 </div>
                 <div class="form-group">
-                    <label>Beschreibung</label>
+                    <label for="assignmentDescription">Beschreibung</label>
                     <textarea id="assignmentDescription" rows="4"></textarea>
                 </div>
                 <div class="form-group">
@@ -111,8 +128,8 @@
                     </div>
                 </div>
                 <div class="form-group">
-                    <label>PDF Dokument</label>
-                    <input type="file" id="assignmentPDF" accept=".pdf">
+                    <label for="assignmentPDF">PDF-Dokument</label>
+                    <input type="file" id="assignmentPDF" accept=".pdf,application/pdf">
                 </div>
                 <input type="hidden" id="assignmentId">
                 <button type="submit" class="btn btn-primary">Speichern</button>
@@ -126,16 +143,14 @@
             <h2 id="vehicleModalTitle">Neues Fahrzeug</h2>
             <form id="vehicleForm">
                 <div class="form-group">
-                    <label>Rufname *</label>
+                    <label for="vehicleCallsign">Rufname *</label>
                     <input type="text" id="vehicleCallsign" required>
                 </div>
                 <div class="form-group">
-                    <label>Fahrzeugtyp *</label>
+                    <label for="vehicleType">Fahrzeugtyp *</label>
                     <select id="vehicleType" required>
                         <option value="">Bitte wählen...</option>
-                        <optgroup label="Einsatzleitung">
-                            <option value="ELW">ELW - Einsatzleitwagen</option>
-                        </optgroup>
+                        <optgroup label="Einsatzleitung"><option value="ELW">ELW - Einsatzleitwagen</option></optgroup>
                         <optgroup label="Löschfahrzeuge">
                             <option value="HLF">HLF - Hilfeleistungslöschfahrzeug</option>
                             <option value="LF">LF - Löschfahrzeug</option>
@@ -153,9 +168,7 @@
                             <option value="MTF">MTF - Mannschaftstransportfahrzeug</option>
                             <option value="MTW">MTW - Mannschaftstransportwagen</option>
                         </optgroup>
-                        <optgroup label="Hubrettungsfahrzeuge">
-                            <option value="DLK">DLK - Drehleiter</option>
-                        </optgroup>
+                        <optgroup label="Hubrettungsfahrzeuge"><option value="DLK">DLK - Drehleiter</option></optgroup>
                         <optgroup label="Rettungsfahrzeuge">
                             <option value="KTW">KTW - Krankentransportwagen</option>
                             <option value="NEF">NEF - Notarzteinsatzfahrzeug</option>
@@ -164,17 +177,26 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Besatzung</label>
-                    <input type="number" id="vehicleCrew" min="0" value="0">
-                </div>
-                <div class="form-group">
-                    <label>Standort</label>
-                    <select id="vehicleLocation">
-                        <option value="">Kein Standort</option>
+                    <label for="vehicleStatus">Status</label>
+                    <select id="vehicleStatus">
+                        <option value="available">Verfügbar</option>
+                        <option value="alerted">Alarmiert</option>
+                        <option value="en_route">Auf Anfahrt</option>
+                        <option value="on_scene">An Einsatzstelle</option>
+                        <option value="unavailable">Nicht verfügbar</option>
+                        <option value="out_of_service">Außer Dienst</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Bemerkungen</label>
+                    <label for="vehicleCrew">Besatzung</label>
+                    <input type="number" id="vehicleCrew" min="0" value="0">
+                </div>
+                <div class="form-group">
+                    <label for="vehicleLocation">Standort</label>
+                    <select id="vehicleLocation"><option value="">Kein Standort</option></select>
+                </div>
+                <div class="form-group">
+                    <label for="vehicleNotes">Bemerkungen</label>
                     <textarea id="vehicleNotes" rows="3"></textarea>
                 </div>
                 <input type="hidden" id="vehicleId">
@@ -189,11 +211,11 @@
             <h2 id="locationModalTitle">Neuer Standort</h2>
             <form id="locationForm">
                 <div class="form-group">
-                    <label>Name *</label>
+                    <label for="locationName">Name *</label>
                     <input type="text" id="locationName" required>
                 </div>
                 <div class="form-group">
-                    <label>Adresse *</label>
+                    <label for="locationAddress">Adresse *</label>
                     <input type="text" id="locationAddress" required placeholder="Straße, PLZ Ort">
                 </div>
                 <input type="hidden" id="locationId">
@@ -208,7 +230,7 @@
             <h2>Neuer Einsatztagebuch-Eintrag</h2>
             <form id="journalForm">
                 <div class="form-group">
-                    <label>Typ</label>
+                    <label for="journalType">Typ</label>
                     <select id="journalType">
                         <option value="note">Bemerkung</option>
                         <option value="instruction">Anweisung</option>
@@ -217,13 +239,11 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Auftrag (optional)</label>
-                    <select id="journalAssignment">
-                        <option value="">Allgemein</option>
-                    </select>
+                    <label for="journalAssignment">Auftrag (optional)</label>
+                    <select id="journalAssignment"><option value="">Allgemein</option></select>
                 </div>
                 <div class="form-group">
-                    <label>Eintrag *</label>
+                    <label for="journalContent">Eintrag *</label>
                     <textarea id="journalContent" rows="4" required></textarea>
                 </div>
                 <button type="submit" class="btn btn-primary">Speichern</button>
@@ -231,28 +251,22 @@
         </div>
     </div>
 
-    <!-- Vehicles Configuration Modal (Full Page) -->
     <div id="vehiclesConfigModal" class="modal config-modal">
         <div class="modal-content config-modal-content">
             <span class="close">&times;</span>
             <h2>Fahrzeuge Verwaltung</h2>
             <p class="config-info">Fahrzeuge sind permanente Konfigurationen und stehen für alle Einsatzlagen zur Verfügung.</p>
-            <div class="tab-header">
-                <button id="newVehicleBtn" class="btn btn-primary">Neues Fahrzeug</button>
-            </div>
+            <div class="tab-header"><button id="newVehicleBtn" class="btn btn-primary">Neues Fahrzeug</button></div>
             <div id="vehiclesList" class="list-container"></div>
         </div>
     </div>
 
-    <!-- Locations Configuration Modal (Full Page) -->
     <div id="locationsConfigModal" class="modal config-modal">
         <div class="modal-content config-modal-content">
             <span class="close">&times;</span>
             <h2>Standorte Verwaltung</h2>
             <p class="config-info">Standorte sind permanente Konfigurationen und stehen für alle Einsatzlagen zur Verfügung.</p>
-            <div class="tab-header">
-                <button id="newLocationBtn" class="btn btn-primary">Neuer Standort</button>
-            </div>
+            <div class="tab-header"><button id="newLocationBtn" class="btn btn-primary">Neuer Standort</button></div>
             <div id="locationsList" class="list-container"></div>
         </div>
     </div>
@@ -263,6 +277,8 @@
     <script src="js/utils.js"></script>
     <script src="js/app-state.js"></script>
     <script src="js/ui-helpers.js"></script>
+    <script src="js/status-utils.js"></script>
+    <script src="js/vehicle-assignment-utils.js"></script>
     <script src="js/main.js"></script>
 </body>
 </html>

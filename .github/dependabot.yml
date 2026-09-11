@@ -1,33 +1,31 @@
 version: 2
 updates:
-  - package-ecosystem: "npm"
-    directory: "/"
+  - package-ecosystem: 'github-actions'
+    directory: '/'
     schedule:
-      interval: "daily"
+      interval: 'weekly'
     open-pull-requests-limit: 5
-    pull-request-branch-name:
-      separator: "/"
 
-  - package-ecosystem: "pip"
-    directory: "/"
+  - package-ecosystem: 'pip'
+    directory: '/backend'
     schedule:
-      interval: "daily"
+      interval: 'weekly'
     open-pull-requests-limit: 5
-    pull-request-branch-name:
-      separator: "/"
 
-  - package-ecosystem: "docker"
-    directory: "/"
+  - package-ecosystem: 'docker'
+    directory: '/backend'
     schedule:
-      interval: "daily"
+      interval: 'weekly'
     open-pull-requests-limit: 5
-    pull-request-branch-name:
-      separator: "/"
 
-  - package-ecosystem: "composer"
-    directory: "/"
+  - package-ecosystem: 'docker'
+    directory: '/frontend'
     schedule:
-      interval: "daily"
+      interval: 'weekly'
     open-pull-requests-limit: 5
-    pull-request-branch-name:
-      separator: "/"
+
+  - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+    open-pull-requests-limit: 5

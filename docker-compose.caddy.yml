@@ -1,6 +1,6 @@
-# Optional Caddy reverse proxy configuration
-# Use this if you want HTTPS or additional proxy features
-# Usage: docker compose -f docker-compose.yml -f docker-compose.caddy.yml up -d
+# Optional reverse proxy overlay
+# Example:
+# docker compose -f docker-compose.prod.yml -f docker-compose.caddy.yml up -d
 
 services:
   caddy:
@@ -15,10 +15,13 @@ services:
     networks:
       - tel_network
     depends_on:
-      - backend
+      frontend:
+        condition: service_healthy
 
   backend:
-    # Override port mapping - Caddy will handle external access
+    ports: []
+
+  frontend:
     ports: []
 
 volumes:

@@ -46,9 +46,12 @@ uploads/
 node_modules/
 npm-debug.log
 yarn-error.log
-package-lock.json
 yarn.lock
 
 # Build
 dist/
 build/
+
+# Playwright
+playwright-report/
+test-results/
