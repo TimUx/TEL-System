@@ -25,6 +25,7 @@ Ein webbasiertes Tool zur Planung und Koordination von großen Einsatzlagen wie 
 - [Bedienung](#bedienung)
   - [Hauptfunktionen](#hauptfunktionen)
   - [Arbeitsablauf](#arbeitsablauf)
+- [Guides](#guides)
 - [API-Dokumentation](#api-dokumentation)
   - [Authentifizierung](#authentifizierung)
   - [Endpunkte](#endpunkte)
@@ -243,6 +244,11 @@ Dann ist die Anwendung unter http://localhost erreichbar (Port 80).
 5. Einsatztagebuch kontinuierlich pflegen
 6. Aufträge als abgeschlossen markieren
 7. Einsatzlage schließen
+
+## Guides
+
+- [User-Guide](USER_GUIDE.md)
+- [Admin-Guide](ADMIN_GUIDE.md)
 
 ## API-Dokumentation
 
