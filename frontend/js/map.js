@@ -1,118 +1,71 @@
-// Map functionality with Leaflet
 let map;
 let markers = {};
-let dashboardData = {
-    assignments: [],
-    vehicles: [],
-    operation: null
-};
-const {
-    getVehicleAssignments,
-    buildVehicleAssignmentOverview
-} = window.vehicleAssignmentUtils;
+let dashboardData = { assignments: [], vehicles: [], operation: null };
+const { buildVehicleAssignmentOverview, getVehicleAssignments } = window.vehicleAssignmentUtils;
+const { getAssignmentStatusLabel, getVehicleStatusLabel } = window.statusUtils;
 const e = escapeHtml;
+const selectedAssignmentId = Number(new URLSearchParams(window.location.search).get('assignment') || 0);
 let mapUpdateInFlight = false;
 let lastMapSignature = '';
+const VEHICLE_OFFSET_DISTANCE = 0.002;
+const VEHICLE_OFFSET_ANGLE_STEP = 60;
 
 function byId(id) {
     return document.getElementById(id);
 }
 
-// Constants for vehicle marker positioning
-const VEHICLE_OFFSET_DISTANCE = 0.002; // Approximately 200 meters in degrees
-const VEHICLE_OFFSET_ANGLE_STEP = 60; // Degrees between vehicles in circular pattern
-
-// Initialize map
 document.addEventListener('DOMContentLoaded', async () => {
-    // Check if Leaflet is available
     if (typeof L !== 'undefined') {
-        // Initialize Leaflet map centered on Germany
         map = L.map('map').setView([51.1657, 10.4515], 6);
-        
-        // Use screenshot as fallback instead of live OpenStreetMap tiles (firewall issue)
-        // Define the bounds for the screenshot (approximate Germany bounds)
         const imageBounds = [[47.27, 5.87], [55.06, 15.04]];
         L.imageOverlay('../screenshots/Screenshot_Openstreetmap.png', imageBounds).addTo(map);
     } else {
-        console.warn('Leaflet library not loaded. Map display will be limited.');
-        // Display message in map area
         const mapDiv = byId('map');
-        if (mapDiv) {
-            const messageDiv = document.createElement('div');
-            messageDiv.style.cssText = 'display: flex; align-items: center; justify-content: center; height: 100%; background: #ecf0f1; color: #7f8c8d; font-size: 18px;';
-            messageDiv.innerHTML = '<div style="text-align: center;"><p>Kartendarstellung nicht verfügbar</p><p style="font-size: 14px;">Fahrzeuge und Aufträge werden in den Seitenleisten angezeigt.</p></div>';
-            mapDiv.appendChild(messageDiv);
-        }
+        const messageDiv = document.createElement('div');
+        messageDiv.style.cssText = 'display:flex;align-items:center;justify-content:center;height:100%;background:#ecf0f1;color:#7f8c8d;font-size:18px;';
+        messageDiv.innerHTML = '<div style="text-align:center;"><p>Kartendarstellung nicht verfügbar</p><p style="font-size:14px;">Fahrzeuge und Aufträge werden in den Seitenleisten angezeigt.</p></div>';
+        mapDiv.appendChild(messageDiv);
     }
-    
-    // Start updating (sidebars will still work)
-    updateMap();
-    setInterval(updateMap, 5000); // Update every 5 seconds
+    await updateMap();
+    setInterval(updateMap, 5000);
 });
 
 async function updateMap() {
     if (mapUpdateInFlight) return;
     mapUpdateInFlight = true;
     try {
-        // Get active operation
-        const operation = await api.getActiveOperation();
-        dashboardData.operation = operation;
-        
-        if (!operation) {
+        dashboardData.operation = await api.getActiveOperation();
+        if (!dashboardData.operation) {
             clearMarkers();
             updateSidebars();
+            byId('selectedAssignmentInfo').textContent = 'Keine aktive Einsatzlage';
             return;
         }
-        
-        // Get assignments and vehicles
-        const assignments = await api.getAssignments();
-        const vehicles = await api.getVehicles();
-        
-        dashboardData.assignments = assignments;
-        dashboardData.vehicles = vehicles;
+        dashboardData.assignments = await api.getAssignments();
+        dashboardData.vehicles = await api.getVehicles();
         const signature = JSON.stringify({
             operation: dashboardData.operation?.id || null,
-            assignments: assignments.map((a) => [a.id, a.status, a.latitude, a.longitude, a.vehicles.length]),
-            vehicles: vehicles.map((v) => [v.id, v.location_id, v.callsign])
+            assignments: dashboardData.assignments.map((assignment) => [assignment.id, assignment.status, assignment.latitude, assignment.longitude, assignment.vehicle_count]),
+            vehicles: dashboardData.vehicles.map((vehicle) => [vehicle.id, vehicle.status, vehicle.location_id]),
         });
-        if (signature === lastMapSignature) {
-            return;
-        }
+        if (signature === lastMapSignature) return;
         lastMapSignature = signature;
-        
-        // Only update map markers if Leaflet is available
+        clearMarkers();
         if (typeof L !== 'undefined' && map) {
-            // Clear existing markers
-            clearMarkers();
-            
-            // Add assignment markers first (so vehicles are on top)
-            assignments.forEach(assignment => {
+            dashboardData.assignments.forEach((assignment) => {
                 if (assignment.latitude && assignment.longitude) {
                     addAssignmentMarker(assignment);
                 }
             });
-            
-            // Add vehicle markers with offset positioning
-            const vehiclesWithAssignments = await getVehiclesWithAssignments(vehicles, assignments);
-            vehiclesWithAssignments.forEach(({ vehicle, assignment }, index) => {
-                if (assignment.latitude && assignment.longitude) {
+            const { deployedVehicles } = buildVehicleAssignmentOverview(dashboardData.vehicles, dashboardData.assignments);
+            deployedVehicles.forEach(({ vehicle, activeAssignments }, index) => {
+                const assignment = activeAssignments[0];
+                if (assignment?.latitude && assignment?.longitude) {
                     addVehicleMarker(vehicle, assignment, index);
                 }
             });
-            
-            // Adjust map bounds if markers exist
-            if (Object.keys(markers).length > 0) {
-                const bounds = [];
-                Object.values(markers).forEach(marker => {
-                    bounds.push(marker.getLatLng());
-                });
-                if (bounds.length > 0) {
-                    map.fitBounds(bounds, { padding: [50, 50] });
-                }
-            }
+            focusSelection();
         }
-        
-        // Always update sidebars with vehicle lists
         updateSidebars();
     } catch (error) {
         console.error('Error updating map:', error);
@@ -121,222 +74,144 @@ async function updateMap() {
     }
 }
 
-async function getVehiclesWithAssignments(vehicles, assignments) {
-    const { activeVehicles } = buildVehicleAssignmentOverview(vehicles, assignments);
-    return activeVehicles.map(({ vehicle, activeAssignments }) => ({
-        vehicle,
-        assignment: activeAssignments[0]
-    }));
+function focusSelection() {
+    const selectedAssignment = dashboardData.assignments.find((assignment) => assignment.id === selectedAssignmentId);
+    if (!selectedAssignment) {
+        byId('selectedAssignmentInfo').textContent = 'Alle aktiven Aufträge';
+        fitAllMarkers();
+        return;
+    }
+    byId('selectedAssignmentInfo').textContent = `${getSequentialNumber(selectedAssignment.number)} · ${selectedAssignment.title}`;
+    const marker = markers[`assignment_${selectedAssignment.id}`];
+    if (marker && map) {
+        marker.openTooltip();
+        map.setView(marker.getLatLng(), 14);
+    }
+}
+
+function fitAllMarkers() {
+    if (!map || Object.keys(markers).length === 0) return;
+    const bounds = Object.values(markers).map((marker) => marker.getLatLng());
+    if (bounds.length > 0) {
+        map.fitBounds(bounds, { padding: [50, 50] });
+    }
 }
 
 function addAssignmentMarker(assignment) {
-    if (typeof L === 'undefined' || !map) return;
-    
     const markerKey = `assignment_${assignment.id}`;
-    
-    // Create custom icon
-    const iconHtml = `
-        <div class="assignment-marker ${assignment.status === 'completed' ? 'completed' : ''}">
-            ${e(getSequentialNumber(assignment.number))}
-        </div>
-    `;
-    
-    const icon = L.divIcon({
-        className: 'custom-marker',
-        html: iconHtml,
-        iconSize: [40, 40],
-        iconAnchor: [20, 20]
-    });
-    
-    const marker = L.marker([assignment.latitude, assignment.longitude], { icon: icon })
-        .addTo(map);
-    
-    // Tooltip content for hover (instead of popup)
-    const tooltipContent = `
+    const iconHtml = `<div class="assignment-marker ${assignment.status === 'completed' ? 'completed' : ''} ${assignment.id === selectedAssignmentId ? 'highlight' : ''}">${e(getSequentialNumber(assignment.number))}</div>`;
+    const icon = L.divIcon({ className: 'custom-marker', html: iconHtml, iconSize: [40, 40], iconAnchor: [20, 20] });
+    const marker = L.marker([assignment.latitude, assignment.longitude], { icon }).addTo(map);
+    marker.bindTooltip(`
         <strong>Auftrag ${e(getSequentialNumber(assignment.number))}</strong><br>
         ${e(assignment.title)}<br>
         ${e(assignment.location_address || '')}<br>
-        Status: ${assignment.status === 'open' ? 'Offen' : assignment.status === 'assigned' ? 'Zugewiesen' : 'Abgeschlossen'}<br>
-        ${assignment.vehicles.length > 0 ? `Fahrzeuge: ${assignment.vehicles.map((v) => e(v)).join(', ')}` : 'Keine Fahrzeuge zugewiesen'}
-    `;
-    
-    // Bind permanent tooltip that shows on hover
-    marker.bindTooltip(tooltipContent, {
-        permanent: false,
-        direction: 'top',
-        offset: [0, -10]
+        Status: ${e(getAssignmentStatusLabel(assignment.status))}<br>
+        ${assignment.vehicles.length > 0 ? `Fahrzeuge: ${assignment.vehicles.map((vehicle) => e(vehicle)).join(', ')}` : 'Keine Fahrzeuge zugewiesen'}
+    `, { permanent: false, direction: 'top', offset: [0, -10] });
+    marker.on('click', () => {
+        byId('selectedAssignmentInfo').textContent = `${getSequentialNumber(assignment.number)} · ${assignment.title}`;
+        marker.openTooltip();
     });
-    
     markers[markerKey] = marker;
 }
 
 function addVehicleMarker(vehicle, assignment, offsetIndex) {
-    if (typeof L === 'undefined' || !map) return;
-    
     const markerKey = `vehicle_${vehicle.id}`;
-    
-    // Calculate offset to avoid overlapping with assignment marker
-    // Use a circular pattern around the assignment location
     const angle = (offsetIndex * VEHICLE_OFFSET_ANGLE_STEP) * (Math.PI / 180);
-    const latOffset = VEHICLE_OFFSET_DISTANCE * Math.cos(angle);
-    const lngOffset = VEHICLE_OFFSET_DISTANCE * Math.sin(angle);
-    
-    const offsetLat = assignment.latitude + latOffset;
-    const offsetLng = assignment.longitude + lngOffset;
-    
-    // Get tactical symbol path
+    const offsetLat = assignment.latitude + (VEHICLE_OFFSET_DISTANCE * Math.cos(angle));
+    const offsetLng = assignment.longitude + (VEHICLE_OFFSET_DISTANCE * Math.sin(angle));
     const symbolPath = getTacticalSymbolPath(vehicle.vehicle_type);
-    
-    // Create custom icon with tactical symbol or text fallback
-    let iconHtml;
-    if (symbolPath) {
-        iconHtml = `
-            <div class="vehicle-marker-tactical">
-                <img src="${symbolPath}" alt="${e(vehicle.vehicle_type)}" class="tactical-symbol">
-                <div class="vehicle-marker-label">${e(vehicle.callsign)}</div>
-            </div>
-        `;
-    } else {
-        iconHtml = `
-            <div class="vehicle-marker">
-                ${e(vehicle.callsign)}
-            </div>
-        `;
-    }
-    
-    const icon = L.divIcon({
-        className: 'custom-marker',
-        html: iconHtml,
-        iconSize: symbolPath ? [60, 80] : [80, 40],
-        iconAnchor: symbolPath ? [30, 70] : [40, 20]
-    });
-    
-    const marker = L.marker([offsetLat, offsetLng], { 
-        icon: icon
-    }).addTo(map);
-    
-    // Get all assignments for this vehicle
+    const iconHtml = symbolPath ? `
+        <div class="vehicle-marker-tactical">
+            <img src="${symbolPath}" alt="${e(vehicle.vehicle_type)}" class="tactical-symbol">
+            <div class="vehicle-marker-label">${e(vehicle.callsign)}</div>
+        </div>` : `<div class="vehicle-marker">${e(vehicle.callsign)}</div>`;
+    const icon = L.divIcon({ className: 'custom-marker', html: iconHtml, iconSize: symbolPath ? [60, 80] : [80, 40], iconAnchor: symbolPath ? [30, 70] : [40, 20] });
+    const marker = L.marker([offsetLat, offsetLng], { icon }).addTo(map);
     const vehicleAssignments = getVehicleAssignments(vehicle, dashboardData.assignments);
-    const assignmentNumbers = vehicleAssignments.map(a => e(getSequentialNumber(a.number))).join(', ');
-    
-    // Tooltip content for hover
-    const tooltipContent = `
+    marker.bindTooltip(`
         <strong>${e(vehicle.callsign)}</strong><br>
         Typ: ${e(vehicle.vehicle_type || 'N/A')}<br>
+        Status: ${e(getVehicleStatusLabel(vehicle.status))}<br>
         Besatzung: ${vehicle.crew_count}<br>
-        ${vehicleAssignments.length > 0 ? `Aufträge: ${assignmentNumbers}` : 'Kein Auftrag'}
-    `;
-    
-    // Bind permanent tooltip that shows on hover
-    marker.bindTooltip(tooltipContent, {
-        permanent: false,
-        direction: 'top',
-        offset: [0, -20]
-    });
-    
+        ${vehicleAssignments.length > 0 ? `Aufträge: ${vehicleAssignments.map((item) => e(getSequentialNumber(item.number))).join(', ')}` : 'Kein Auftrag'}
+    `, { permanent: false, direction: 'top', offset: [0, -20] });
     markers[markerKey] = marker;
 }
 
 function clearMarkers() {
     if (typeof L !== 'undefined' && map) {
-        Object.values(markers).forEach(marker => {
-            map.removeLayer(marker);
-        });
+        Object.values(markers).forEach((marker) => map.removeLayer(marker));
     }
     markers = {};
 }
 
-// Update sidebars with vehicle information
 function updateSidebars() {
-    updateDeployedVehicles();
-    updateAvailableVehicles();
+    const { deployedVehicles, availableVehiclesByLocation, unavailableVehicles } = buildVehicleAssignmentOverview(dashboardData.vehicles, dashboardData.assignments);
+    renderDeployedVehicles(deployedVehicles);
+    renderAvailableVehicles(availableVehiclesByLocation);
+    renderUnavailableVehicles(unavailableVehicles);
 }
 
-function updateDeployedVehicles() {
+function renderDeployedVehicles(vehicleData) {
     const container = byId('deployedVehicles');
-    
     if (!dashboardData.operation) {
-        container.innerHTML = '<p style="color: #95a5a6; padding: 10px; font-size: 12px;">Keine aktive Einsatzlage</p>';
+        container.innerHTML = '<p class="no-data">Keine aktive Einsatzlage</p>';
         return;
     }
-    
-    const { activeVehicles } = buildVehicleAssignmentOverview(
-        dashboardData.vehicles,
-        dashboardData.assignments
-    );
-    
-    if (activeVehicles.length === 0) {
-        container.innerHTML = '<p style="color: #95a5a6; padding: 10px; font-size: 12px;">Keine Fahrzeuge im Einsatz</p>';
+    if (vehicleData.length === 0) {
+        container.innerHTML = '<p class="no-data">Keine Fahrzeuge im Einsatz</p>';
         return;
     }
-    
-    container.innerHTML = '';
-    activeVehicles.forEach(({ vehicle, assignments }) => {
-        const card = document.createElement('div');
-        card.className = 'sidebar-vehicle-card';
-        
-        // Build assignment numbers display
-        let assignmentsHtml = '';
-        if (assignments.length > 0) {
-            assignmentsHtml = '<div class="sidebar-vehicle-assignments">';
-            assignments.forEach(a => {
-                assignmentsHtml += `<span class="sidebar-assignment-badge">${e(getSequentialNumber(a.number))}</span>`;
-            });
-            assignmentsHtml += '</div>';
-        }
-        
-        card.innerHTML = `
+    container.innerHTML = vehicleData.map(({ vehicle, assignments }) => `
+        <div class="sidebar-vehicle-card">
             <div class="sidebar-vehicle-callsign">${e(vehicle.callsign)}</div>
             <div class="sidebar-vehicle-type">${e(vehicle.vehicle_type || '')}</div>
+            <div class="sidebar-vehicle-status">${e(getVehicleStatusLabel(vehicle.status))}</div>
             <div class="sidebar-vehicle-crew">👥 ${vehicle.crew_count}</div>
-            ${assignmentsHtml}
-        `;
-        
-        container.appendChild(card);
-    });
+            <div class="sidebar-vehicle-assignments">${assignments.map((assignment) => `<span class="sidebar-assignment-badge">${e(getSequentialNumber(assignment.number))}</span>`).join('')}</div>
+        </div>`).join('');
 }
 
-function updateAvailableVehicles() {
+function renderAvailableVehicles(vehiclesByLocation) {
     const container = byId('availableVehicles');
-    
+    const groups = Object.entries(vehiclesByLocation);
     if (!dashboardData.operation) {
-        container.innerHTML = '<p style="color: #95a5a6; padding: 10px; font-size: 12px;">Keine aktive Einsatzlage</p>';
+        container.innerHTML = '<p class="no-data">Keine aktive Einsatzlage</p>';
         return;
     }
-    
-    const { inactiveVehiclesByLocation: vehiclesByLocation } = buildVehicleAssignmentOverview(
-        dashboardData.vehicles,
-        dashboardData.assignments
-    );
-    
-    if (Object.keys(vehiclesByLocation).length === 0) {
-        container.innerHTML = '<p style="color: #95a5a6; padding: 10px; font-size: 12px;">Alle Fahrzeuge im Einsatz</p>';
+    if (groups.length === 0) {
+        container.innerHTML = '<p class="no-data">Keine verfügbaren Fahrzeuge</p>';
         return;
     }
-    
-    container.innerHTML = '';
-    Object.entries(vehiclesByLocation).forEach(([locationName, vehicles]) => {
-        const group = document.createElement('div');
-        group.className = 'sidebar-location-group';
-        
-        const header = document.createElement('div');
-        header.className = 'sidebar-location-header';
-        header.textContent = locationName;
-        group.appendChild(header);
-        
-        vehicles.forEach(vehicle => {
-            const card = document.createElement('div');
-            card.className = 'sidebar-vehicle-card inactive';
-            
-            card.innerHTML = `
-                <div class="sidebar-vehicle-callsign">${e(vehicle.callsign)}</div>
-                <div class="sidebar-vehicle-type inactive-text">${e(vehicle.vehicle_type || '')}</div>
-                <div class="sidebar-vehicle-crew inactive-text">👥 ${vehicle.crew_count}</div>
-            `;
-            
-            group.appendChild(card);
-        });
-        
-        container.appendChild(group);
-    });
+    container.innerHTML = groups.map(([locationName, vehicles]) => `
+        <div class="sidebar-location-group">
+            <div class="sidebar-location-header">${e(locationName)}</div>
+            ${vehicles.map((vehicle) => `
+                <div class="sidebar-vehicle-card inactive">
+                    <div class="sidebar-vehicle-callsign">${e(vehicle.callsign)}</div>
+                    <div class="sidebar-vehicle-type">${e(vehicle.vehicle_type || '')}</div>
+                    <div class="sidebar-vehicle-status">${e(getVehicleStatusLabel(vehicle.status))}</div>
+                    <div class="sidebar-vehicle-crew">👥 ${vehicle.crew_count}</div>
+                </div>`).join('')}
+        </div>`).join('');
+}
+
+function renderUnavailableVehicles(vehicles) {
+    const container = byId('unavailableVehicles');
+    if (!dashboardData.operation) {
+        container.innerHTML = '<p class="no-data">Keine aktive Einsatzlage</p>';
+        return;
+    }
+    if (vehicles.length === 0) {
+        container.innerHTML = '<p class="no-data">Keine gesperrten Fahrzeuge</p>';
+        return;
+    }
+    container.innerHTML = vehicles.map((vehicle) => `
+        <div class="sidebar-vehicle-card inactive">
+            <div class="sidebar-vehicle-callsign">${e(vehicle.callsign)}</div>
+            <div class="sidebar-vehicle-type">${e(vehicle.vehicle_type || '')}</div>
+            <div class="sidebar-vehicle-status">${e(getVehicleStatusLabel(vehicle.status))}</div>
+        </div>`).join('');
 }

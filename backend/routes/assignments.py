@@ -320,8 +320,8 @@ def assign_vehicle(assignment_id):
     vehicle, vehicle_error = get_or_api_404(Vehicle, data['vehicle_id'], 'vehicle')
     if vehicle_error:
         return vehicle_error
-    if vehicle.status == VehicleStatus.OUT_OF_SERVICE:
-        return api_error('Vehicle is out of service', 400, 'vehicle_unavailable')
+    if vehicle.status in {VehicleStatus.UNAVAILABLE, VehicleStatus.OUT_OF_SERVICE}:
+        return api_error('Vehicle is not available for assignment', 400, 'vehicle_unavailable')
 
     try:
         max_order = db.session.query(db.func.max(VehicleAssignment.order)).filter_by(vehicle_id=vehicle.id).scalar() or 0

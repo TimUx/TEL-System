@@ -36,7 +36,10 @@ def create_vehicle():
     if error:
         return error
 
-    status = VehicleStatus(data.get('status', VehicleStatus.AVAILABLE.value))
+    try:
+        status = VehicleStatus(data.get('status', VehicleStatus.AVAILABLE.value))
+    except ValueError:
+        return api_error('Invalid vehicle status', 400, 'validation_error')
     location_id = data.get('location_id')
     if location_id:
         location, location_error = get_or_api_404(Location, location_id, 'location')
@@ -95,7 +98,10 @@ def update_vehicle(vehicle_id):
     if 'notes' in data:
         vehicle.notes = data['notes']
     if 'status' in data:
-        vehicle.status = VehicleStatus(data['status'])
+        try:
+            vehicle.status = VehicleStatus(data['status'])
+        except ValueError:
+            return api_error('Invalid vehicle status', 400, 'validation_error')
 
     active_operation = _active_operation()
     if previous_status != vehicle.status and active_operation:
