@@ -37,12 +37,14 @@ test('capture TEL screenshots', async ({ page, context }) => {
 
     await page.goto('/');
     await page.getByRole('button', { name: '⚙️ Einstellungen' }).click();
-    await page.getByRole('button', { name: 'Standorte' }).click();
+    await page.locator('#locationsConfigBtn').click();
     await page.getByRole('button', { name: 'Neuer Standort' }).click();
     await expect(page.locator('#locationModal')).toBeVisible();
     await save(page, '06-standort-formular.png');
 
-    await page.locator('#locationModal .close').click();
+    await page.goto('/');
+    await page.getByRole('button', { name: '⚙️ Einstellungen' }).click();
+    await page.locator('#vehiclesConfigBtn').click();
     await page.getByRole('button', { name: 'Neues Fahrzeug' }).click();
     await expect(page.locator('#vehicleModal')).toBeVisible();
     await save(page, '07-fahrzeug-formular.png');

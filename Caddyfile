@@ -1,17 +1,10 @@
-# Caddyfile - Caddy reverse proxy configuration for TEL-System
+# TEL-System Caddy reverse proxy
 
-# For local LAN usage without HTTPS:
 :80 {
-    # Serve frontend and API through backend
-    reverse_proxy backend:5000
+    reverse_proxy frontend:80
 }
 
-# For production with HTTPS (uncomment and adjust domain):
-# tel-system.yourdomain.com {
-#     reverse_proxy backend:5000
-# }
-
-# For internal LAN with custom port:
-# :8080 {
-#     reverse_proxy backend:5000
+# Example for HTTPS deployment:
+# tel-system.example.org {
+#     reverse_proxy frontend:80
 # }
