@@ -1,7 +1,9 @@
-import os
 import logging
+import os
 from functools import wraps
-from flask import request, jsonify
+
+from flask import jsonify, request
+
 
 
 logger = logging.getLogger(__name__)
@@ -11,7 +13,7 @@ def api_error(message, status_code=400, code='bad_request', details=None):
     payload = {
         'error': {
             'code': code,
-            'message': message
+            'message': message,
         }
     }
     if details is not None:
@@ -31,7 +33,7 @@ def parse_json_body(required_fields=None):
                 'Missing required fields',
                 400,
                 'validation_error',
-                {'missing_fields': missing}
+                {'missing_fields': missing},
             )
 
     return data, None
@@ -60,8 +62,7 @@ def require_internal_api_key(f):
 
         expected_key = os.environ.get('INTERNAL_API_KEY')
         if not expected_key:
-            # Explicitly opt-in to authentication when key is configured.
-            return f(*args, **kwargs)
+            return api_error('Internal API key is not configured', 503, 'service_unavailable')
 
         provided_key = request.headers.get('X-Internal-API-Key')
         if not provided_key or provided_key != expected_key:
@@ -77,7 +78,7 @@ def log_exception(context, error):
 
 
 def get_or_api_404(model, object_id, resource_name='resource'):
-    obj = model.query.get(object_id)
+    obj = model.query.session.get(model, object_id)
     if not obj:
         return None, api_error(f'{resource_name} not found', 404, 'not_found')
     return obj, None

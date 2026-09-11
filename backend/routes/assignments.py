@@ -1,302 +1,434 @@
-from flask import Blueprint, request, jsonify, current_app
-from app import db
-from models import Assignment, Operation, VehicleAssignment, Vehicle, JournalEntry, AssignmentStatus, OperationStatus
-from datetime import datetime
-from geopy.geocoders import Nominatim
+import os
+from datetime import datetime, timezone
+from uuid import uuid4
+
+from flask import Blueprint, current_app, jsonify, request
+from PyPDF2 import PdfReader
 from sqlalchemy import desc
 from sqlalchemy.exc import IntegrityError
-import os
-from werkzeug.utils import secure_filename
-from api_utils import parse_json_body, parse_pagination, require_internal_api_key, log_exception, api_error, get_or_api_404
-from services.assignment_service import next_assignment_number
+from sqlalchemy.orm import joinedload, selectinload
+
+from api_utils import api_error, get_or_api_404, log_exception, parse_json_body, parse_pagination, require_internal_api_key
+from app import db
+from models import Assignment, AssignmentStatus, Operation, OperationStatus, Vehicle, VehicleAssignment, VehicleStatus
+from services.assignment_service import can_transition_assignment_status, next_assignment_number, normalize_assignment_status
+from services.geocoding_service import schedule_assignment_geocoding
+from services.journal_service import create_system_event
+
 
 bp = Blueprint('assignments', __name__, url_prefix='/api/assignments')
-geolocator = Nominatim(user_agent="tel-system")
+PDF_SIGNATURE = b'%PDF-'
+ALLOWED_PDF_MIMES = {'application/pdf', 'application/x-pdf'}
+ACTIVE_VEHICLE_STATUSES = {VehicleStatus.ALERTED, VehicleStatus.EN_ROUTE, VehicleStatus.ON_SCENE}
+
+
+
+def utcnow():
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+
+def _active_operation():
+    return Operation.query.filter_by(status=OperationStatus.ACTIVE).order_by(desc(Operation.created_at)).first()
+
+
+
+def _assignments_query():
+    return Assignment.query.options(
+        selectinload(Assignment.vehicle_assignments).joinedload(VehicleAssignment.vehicle)
+    )
+
+
+
+def _apply_status_transition(assignment, target_status, *, auto=False):
+    target = normalize_assignment_status(target_status)
+    if target == assignment.status:
+        return None
+    if not can_transition_assignment_status(assignment.status, target):
+        return api_error(
+            'Invalid assignment status transition',
+            400,
+            'invalid_status_transition',
+            {'from': assignment.status.value, 'to': target.value},
+        )
+    previous = assignment.status
+    assignment.status = target
+    assignment.completed_at = utcnow() if target == AssignmentStatus.COMPLETED else None
+    entry_type = 'assignment_status_changed'
+    prefix = 'Status automatisch geändert' if auto else 'Status geändert'
+    return create_system_event(
+        assignment.operation_id,
+        f'Auftrag {assignment.number}: {prefix}: {previous.value} → {target.value}',
+        assignment_id=assignment.id,
+        entry_type=entry_type,
+    )
+
+
+
+def _sync_vehicle_status_after_unassign(vehicle):
+    active_links = (
+        VehicleAssignment.query.join(Assignment)
+        .filter(
+            VehicleAssignment.vehicle_id == vehicle.id,
+            Assignment.status != AssignmentStatus.COMPLETED,
+        )
+        .count()
+    )
+    if active_links == 0 and vehicle.status in ACTIVE_VEHICLE_STATUSES:
+        previous = vehicle.status
+        vehicle.status = VehicleStatus.AVAILABLE
+        return create_system_event(
+            _active_operation().id if _active_operation() else None,
+            f'Fahrzeug {vehicle.callsign}: Status geändert: {previous.value} → {vehicle.status.value}',
+            entry_type='vehicle_status_changed',
+        ) if _active_operation() else None
+    return None
+
+
+
+def _validate_pdf(file_storage):
+    if not file_storage or not file_storage.filename:
+        return None, api_error('No file selected', 400, 'file_missing')
+    if not file_storage.filename.lower().endswith('.pdf'):
+        return None, api_error('Invalid file extension', 400, 'invalid_file_type')
+    if file_storage.mimetype not in ALLOWED_PDF_MIMES:
+        return None, api_error('Invalid file MIME type', 400, 'invalid_file_type')
+
+    file_storage.stream.seek(0, os.SEEK_END)
+    size = file_storage.stream.tell()
+    file_storage.stream.seek(0)
+    if size == 0:
+        return None, api_error('Uploaded file is empty', 400, 'invalid_file')
+    if size > current_app.config['MAX_PDF_UPLOAD_SIZE']:
+        return None, api_error('Uploaded file exceeds the PDF size limit', 413, 'file_too_large')
+
+    header = file_storage.stream.read(len(PDF_SIGNATURE))
+    file_storage.stream.seek(0)
+    if header != PDF_SIGNATURE:
+        return None, api_error('Uploaded file is not a valid PDF', 400, 'invalid_file')
+
+    try:
+        reader = PdfReader(file_storage.stream)
+        if len(reader.pages) < 1:
+            return None, api_error('Uploaded file is not a valid PDF', 400, 'invalid_file')
+    except Exception:
+        return None, api_error('Uploaded file is not a valid PDF', 400, 'invalid_file')
+    finally:
+        file_storage.stream.seek(0)
+
+    return size, None
+
 
 @bp.route('/', methods=['GET'])
 def get_assignments():
-    """Get all assignments for active operation"""
     operation_id = request.args.get('operation_id')
     limit, offset, error = parse_pagination()
     if error:
         return error
-    
+
+    query = _assignments_query().order_by(desc(Assignment.number))
     if operation_id:
-        assignments = Assignment.query.filter_by(operation_id=operation_id).order_by(desc(Assignment.number)).limit(limit).offset(offset).all()
+        query = query.filter_by(operation_id=operation_id)
     else:
-        # Get active operation
-        operation = Operation.query.filter_by(status=OperationStatus.ACTIVE).first()
-        if operation:
-            assignments = Assignment.query.filter_by(operation_id=operation.id).order_by(desc(Assignment.number)).limit(limit).offset(offset).all()
-        else:
-            assignments = []
-    
-    return jsonify([a.to_dict() for a in assignments])
+        operation = _active_operation()
+        if not operation:
+            return jsonify([])
+        query = query.filter_by(operation_id=operation.id)
+
+    assignments = query.limit(limit).offset(offset).all()
+    return jsonify([assignment.to_dict() for assignment in assignments])
+
 
 @bp.route('/', methods=['POST'])
 @require_internal_api_key
 def create_assignment():
-    """Create a new assignment"""
     data, error = parse_json_body(required_fields=['title'])
     if error:
         return error
-    
-    # Get or create active operation
+
     operation_id = data.get('operation_id')
     if not operation_id:
-        operation = Operation.query.filter_by(status=OperationStatus.ACTIVE).first()
+        operation = _active_operation()
         if not operation:
             return api_error('No active operation found', 400, 'no_active_operation')
         operation_id = operation.id
-    
-    operation = Operation.query.get(operation_id)
-    if not operation:
-        return api_error('Operation not found', 404, 'operation_not_found')
+
+    operation, operation_error = get_or_api_404(Operation, operation_id, 'operation')
+    if operation_error:
+        return operation_error
+    if operation.status == OperationStatus.CLOSED:
+        return api_error('Cannot create assignment in closed operation', 400, 'operation_closed')
 
     for _ in range(3):
         try:
-            assignment_number = next_assignment_number(operation_id, operation.number)
-
             assignment = Assignment(
                 operation_id=operation_id,
-                number=assignment_number,
+                number=next_assignment_number(operation_id, operation.number),
                 title=data['title'],
                 description=data.get('description'),
                 location_address=data.get('location_address'),
-                status=AssignmentStatus.OPEN
+                status=AssignmentStatus.OPEN,
             )
-
-            if 'latitude' in data and 'longitude' in data:
+            if data.get('latitude') is not None and data.get('longitude') is not None:
                 assignment.latitude = data['latitude']
                 assignment.longitude = data['longitude']
-            elif data.get('location_address'):
-                try:
-                    geo_result = geolocator.geocode(data['location_address'])
-                    if geo_result:
-                        assignment.latitude = geo_result.latitude
-                        assignment.longitude = geo_result.longitude
-                except Exception as e:
-                    log_exception('assignment geocoding failed', e)
-
             db.session.add(assignment)
             db.session.flush()
-
-            journal_entry = JournalEntry(
-                operation_id=operation_id,
+            db.session.add(create_system_event(
+                operation_id,
+                f'Auftrag {assignment.number} erstellt: {assignment.title}',
                 assignment_id=assignment.id,
-                entry_type='status_change',
-                content=f'Auftrag {assignment.number} erstellt: {assignment.title}'
-            )
-            db.session.add(journal_entry)
+                entry_type='assignment_created',
+            ))
             db.session.commit()
-            return jsonify(assignment.to_dict()), 201
+            if assignment.location_address and assignment.latitude is None and assignment.longitude is None:
+                schedule_assignment_geocoding(current_app._get_current_object(), assignment.id, assignment.location_address)
+            return jsonify(_assignments_query().filter_by(id=assignment.id).first().to_dict()), 201
         except IntegrityError:
             db.session.rollback()
-            continue
-        except Exception as e:
+        except Exception as error:
             db.session.rollback()
-            log_exception('create_assignment failed', e)
+            log_exception('create_assignment failed', error)
             return api_error('Failed to create assignment', 500, 'assignment_create_failed')
 
     return api_error('Failed to allocate assignment number. Please retry.', 409, 'assignment_number_conflict')
 
+
 @bp.route('/<int:assignment_id>', methods=['GET'])
 def get_assignment(assignment_id):
-    """Get a single assignment"""
-    assignment, error = get_or_api_404(Assignment, assignment_id, 'assignment')
-    if error:
-        return error
+    assignment = _assignments_query().filter_by(id=assignment_id).first()
+    if not assignment:
+        return api_error('assignment not found', 404, 'not_found')
     return jsonify(assignment.to_dict())
+
 
 @bp.route('/<int:assignment_id>', methods=['PUT'])
 @require_internal_api_key
 def update_assignment(assignment_id):
-    """Update an assignment"""
     assignment, obj_error = get_or_api_404(Assignment, assignment_id, 'assignment')
     if obj_error:
         return obj_error
-    
-    # Check if operation is closed
     if assignment.operation.status == OperationStatus.CLOSED:
         return api_error('Cannot modify assignment in closed operation', 400, 'operation_closed')
-    
+
     data, error = parse_json_body()
     if error:
         return error
-    
-    if 'title' in data:
+
+    changes = []
+    geocode_address = None
+    if 'title' in data and data['title'] != assignment.title:
+        changes.append(f'Titel: {assignment.title} → {data["title"]}')
         assignment.title = data['title']
-    if 'description' in data:
+    if 'description' in data and data['description'] != assignment.description:
+        changes.append('Beschreibung aktualisiert')
         assignment.description = data['description']
-    if 'location_address' in data:
+    if 'location_address' in data and data['location_address'] != assignment.location_address:
         assignment.location_address = data['location_address']
-        # Re-geocode
-        try:
-            geo_result = geolocator.geocode(data['location_address'])
-            if geo_result:
-                assignment.latitude = geo_result.latitude
-                assignment.longitude = geo_result.longitude
-        except Exception as e:
-            log_exception('assignment re-geocoding failed', e)
+        changes.append('Einsatzort aktualisiert')
+        if data.get('latitude') is None and data.get('longitude') is None:
+            assignment.latitude = None
+            assignment.longitude = None
+            geocode_address = assignment.location_address
     if 'latitude' in data:
         assignment.latitude = data['latitude']
     if 'longitude' in data:
         assignment.longitude = data['longitude']
-    
+
+    status_event = None
+    if 'status' in data:
+        status_event = _apply_status_transition(assignment, data['status'])
+        if isinstance(status_event, tuple):
+            return status_event
+        if status_event:
+            changes.append('Status aktualisiert')
+            db.session.add(status_event)
+
+    if changes:
+        db.session.add(create_system_event(
+            assignment.operation_id,
+            f'Auftrag {assignment.number} geändert: ' + '; '.join(changes),
+            assignment_id=assignment.id,
+            entry_type='assignment_updated',
+        ))
     db.session.commit()
-    return jsonify(assignment.to_dict())
+
+    if geocode_address:
+        schedule_assignment_geocoding(current_app._get_current_object(), assignment.id, geocode_address)
+
+    return jsonify(_assignments_query().filter_by(id=assignment.id).first().to_dict())
+
+
+@bp.route('/<int:assignment_id>/status', methods=['POST'])
+@require_internal_api_key
+def update_assignment_status(assignment_id):
+    assignment, error = get_or_api_404(Assignment, assignment_id, 'assignment')
+    if error:
+        return error
+    if assignment.operation.status == OperationStatus.CLOSED:
+        return api_error('Cannot modify assignment in closed operation', 400, 'operation_closed')
+
+    data, parse_error = parse_json_body(required_fields=['status'])
+    if parse_error:
+        return parse_error
+
+    event = _apply_status_transition(assignment, data['status'])
+    if isinstance(event, tuple):
+        return event
+    if event:
+        db.session.add(event)
+    db.session.commit()
+    return jsonify(_assignments_query().filter_by(id=assignment.id).first().to_dict())
+
 
 @bp.route('/<int:assignment_id>/complete', methods=['POST'])
 @require_internal_api_key
 def complete_assignment(assignment_id):
-    """Mark an assignment as completed"""
     assignment, error = get_or_api_404(Assignment, assignment_id, 'assignment')
     if error:
         return error
-    
     if assignment.operation.status == OperationStatus.CLOSED:
         return api_error('Cannot modify assignment in closed operation', 400, 'operation_closed')
-    
-    assignment.status = AssignmentStatus.COMPLETED
-    assignment.completed_at = datetime.utcnow()
-    
-    # Create journal entry
-    journal_entry = JournalEntry(
-        operation_id=assignment.operation_id,
+
+    event = _apply_status_transition(assignment, AssignmentStatus.COMPLETED)
+    if isinstance(event, tuple):
+        return event
+    if event:
+        db.session.add(event)
+    db.session.add(create_system_event(
+        assignment.operation_id,
+        f'Auftrag {assignment.number} abgeschlossen',
         assignment_id=assignment.id,
-        entry_type='status_change',
-        content=f'Auftrag {assignment.number} abgeschlossen'
-    )
-    db.session.add(journal_entry)
+        entry_type='assignment_completed',
+    ))
     db.session.commit()
-    
-    return jsonify(assignment.to_dict())
+    return jsonify(_assignments_query().filter_by(id=assignment.id).first().to_dict())
+
 
 @bp.route('/<int:assignment_id>/vehicles', methods=['POST'])
 @require_internal_api_key
 def assign_vehicle(assignment_id):
-    """Assign a vehicle to an assignment"""
     assignment, assignment_error = get_or_api_404(Assignment, assignment_id, 'assignment')
     if assignment_error:
         return assignment_error
+    if assignment.operation.status == OperationStatus.CLOSED:
+        return api_error('Cannot modify assignment in closed operation', 400, 'operation_closed')
+
     data, error = parse_json_body(required_fields=['vehicle_id'])
     if error:
         return error
-    vehicle_id = data.get('vehicle_id')
-    
-    vehicle, vehicle_error = get_or_api_404(Vehicle, vehicle_id, 'vehicle')
+    vehicle, vehicle_error = get_or_api_404(Vehicle, data['vehicle_id'], 'vehicle')
     if vehicle_error:
         return vehicle_error
-    
-    # Check if vehicle is already assigned to this assignment
-    existing = VehicleAssignment.query.filter_by(
-        vehicle_id=vehicle_id,
-        assignment_id=assignment_id
-    ).first()
-    
-    if existing:
-        return api_error('Vehicle already assigned to this assignment', 400, 'vehicle_already_assigned')
-    
-    # Get the max order for this vehicle
-    max_order = db.session.query(db.func.max(VehicleAssignment.order)).filter_by(
-        vehicle_id=vehicle_id
-    ).scalar() or 0
-    
-    vehicle_assignment = VehicleAssignment(
-        vehicle_id=vehicle_id,
-        assignment_id=assignment_id,
-        order=max_order + 1
-    )
-    
-    db.session.add(vehicle_assignment)
-    
-    # Update assignment status if it was open
-    if assignment.status == AssignmentStatus.OPEN:
-        assignment.status = AssignmentStatus.ASSIGNED
-    
-    # Create journal entry
-    journal_entry = JournalEntry(
-        operation_id=assignment.operation_id,
-        assignment_id=assignment.id,
-        entry_type='vehicle_assigned',
-        content=f'Fahrzeug {vehicle.callsign} zu Auftrag {assignment.number} zugewiesen'
-    )
-    db.session.add(journal_entry)
-    
-    db.session.commit()
-    
-    return jsonify(assignment.to_dict())
+    if vehicle.status == VehicleStatus.OUT_OF_SERVICE:
+        return api_error('Vehicle is out of service', 400, 'vehicle_unavailable')
+
+    try:
+        max_order = db.session.query(db.func.max(VehicleAssignment.order)).filter_by(vehicle_id=vehicle.id).scalar() or 0
+        db.session.add(VehicleAssignment(vehicle_id=vehicle.id, assignment_id=assignment.id, order=max_order + 1))
+
+        status_event = None
+        if assignment.status == AssignmentStatus.OPEN:
+            status_event = _apply_status_transition(assignment, AssignmentStatus.ASSIGNED, auto=True)
+        if status_event and not isinstance(status_event, tuple):
+            db.session.add(status_event)
+
+        if vehicle.status == VehicleStatus.AVAILABLE:
+            previous_status = vehicle.status
+            vehicle.status = VehicleStatus.ALERTED
+            db.session.add(create_system_event(
+                assignment.operation_id,
+                f'Fahrzeug {vehicle.callsign}: Status geändert: {previous_status.value} → {vehicle.status.value}',
+                assignment_id=assignment.id,
+                entry_type='vehicle_status_changed',
+            ))
+
+        db.session.add(create_system_event(
+            assignment.operation_id,
+            f'Fahrzeug {vehicle.callsign} zu Auftrag {assignment.number} zugewiesen',
+            assignment_id=assignment.id,
+            entry_type='vehicle_assigned',
+        ))
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return api_error('Vehicle already assigned to this assignment', 409, 'vehicle_already_assigned')
+
+    return jsonify(_assignments_query().filter_by(id=assignment.id).first().to_dict())
+
 
 @bp.route('/<int:assignment_id>/vehicles/<int:vehicle_id>', methods=['DELETE'])
 @require_internal_api_key
 def unassign_vehicle(assignment_id, vehicle_id):
-    """Remove a vehicle from an assignment"""
-    vehicle_assignment = VehicleAssignment.query.filter_by(
-        vehicle_id=vehicle_id,
-        assignment_id=assignment_id
-    ).first()
+    vehicle_assignment = VehicleAssignment.query.filter_by(vehicle_id=vehicle_id, assignment_id=assignment_id).first()
     if not vehicle_assignment:
         return api_error('Vehicle assignment not found', 404, 'not_found')
-    
+
     assignment, assignment_error = get_or_api_404(Assignment, assignment_id, 'assignment')
     if assignment_error:
         return assignment_error
+    if assignment.operation.status == OperationStatus.CLOSED:
+        return api_error('Cannot modify assignment in closed operation', 400, 'operation_closed')
     vehicle, vehicle_error = get_or_api_404(Vehicle, vehicle_id, 'vehicle')
     if vehicle_error:
         return vehicle_error
-    
+
     db.session.delete(vehicle_assignment)
-    
-    # Check if assignment has any more vehicles
+    db.session.flush()
+
     remaining = VehicleAssignment.query.filter_by(assignment_id=assignment_id).count()
-    if remaining == 0 and assignment.status == AssignmentStatus.ASSIGNED:
-        assignment.status = AssignmentStatus.OPEN
-    
-    # Create journal entry
-    journal_entry = JournalEntry(
-        operation_id=assignment.operation_id,
+    if remaining == 0 and assignment.status in {AssignmentStatus.ASSIGNED, AssignmentStatus.IN_PROGRESS}:
+        status_event = _apply_status_transition(assignment, AssignmentStatus.OPEN, auto=True)
+        if status_event and not isinstance(status_event, tuple):
+            db.session.add(status_event)
+
+    vehicle_status_event = _sync_vehicle_status_after_unassign(vehicle)
+    if vehicle_status_event:
+        db.session.add(vehicle_status_event)
+
+    db.session.add(create_system_event(
+        assignment.operation_id,
+        f'Fahrzeug {vehicle.callsign} von Auftrag {assignment.number} entfernt',
         assignment_id=assignment.id,
         entry_type='vehicle_unassigned',
-        content=f'Fahrzeug {vehicle.callsign} von Auftrag {assignment.number} entfernt'
-    )
-    db.session.add(journal_entry)
-    
+    ))
     db.session.commit()
-    
     return jsonify({'message': 'Vehicle unassigned'}), 200
+
 
 @bp.route('/upload', methods=['POST'])
 @require_internal_api_key
 def upload_pdf():
-    """Upload PDF for an assignment"""
     if 'file' not in request.files:
         return api_error('No file provided', 400, 'file_missing')
-    
-    file = request.files['file']
+
     assignment_id = request.form.get('assignment_id')
-    
     if not assignment_id:
         return api_error('assignment_id is required', 400, 'validation_error')
-    
+
     assignment, error = get_or_api_404(Assignment, assignment_id, 'assignment')
     if error:
         return error
-    
-    if file.filename == '':
-        return api_error('No file selected', 400, 'file_missing')
-    
-    is_pdf_ext = bool(file and file.filename and file.filename.lower().endswith('.pdf'))
-    is_pdf_mime = file.mimetype in ('application/pdf', 'application/x-pdf')
-    if is_pdf_ext and is_pdf_mime:
-        filename = f"{assignment.number}_{secure_filename(file.filename)}"
-        upload_dir = current_app.config.get('UPLOAD_FOLDER', '/app/uploads')
-        os.makedirs(upload_dir, exist_ok=True)
-        filepath = os.path.join(upload_dir, filename)
-        file.save(filepath)
-        
-        assignment.pdf_file = filename
-        db.session.commit()
-        
-        return jsonify({'filename': filename}), 200
-    
-    return api_error('Invalid file type', 400, 'invalid_file_type')
+    if assignment.operation.status == OperationStatus.CLOSED:
+        return api_error('Cannot modify assignment in closed operation', 400, 'operation_closed')
+
+    file = request.files['file']
+    _, validation_error = _validate_pdf(file)
+    if validation_error:
+        return validation_error
+
+    upload_dir = current_app.config.get('UPLOAD_FOLDER', '/app/uploads')
+    os.makedirs(upload_dir, exist_ok=True)
+    filename = f'{assignment.number}_{uuid4().hex}.pdf'
+    filepath = os.path.join(upload_dir, filename)
+    file.save(filepath)
+
+    assignment.pdf_file = filename
+    db.session.add(create_system_event(
+        assignment.operation_id,
+        f'PDF zu Auftrag {assignment.number} hochgeladen',
+        assignment_id=assignment.id,
+        entry_type='assignment_pdf_uploaded',
+    ))
+    db.session.commit()
+    return jsonify({'filename': filename}), 200
