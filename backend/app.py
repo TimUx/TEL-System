@@ -71,7 +71,10 @@ def create_app():
     app = Flask(__name__, static_folder='/app/static', static_url_path='')
     CORS(app, resources={r"/api/*": {"origins": _get_cors_origins()}})
 
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///tel_system.db')
+    database_url = os.environ.get('DATABASE_URL', 'sqlite:///tel_system.db')
+    if database_url.startswith('postgresql://'):
+        database_url = database_url.replace('postgresql://', 'postgresql+psycopg2://', 1)
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key')
     app.config['UPLOAD_FOLDER'] = os.environ.get('UPLOAD_FOLDER', '/app/uploads')
